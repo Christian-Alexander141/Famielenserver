@@ -335,9 +335,6 @@ def create_directory():
         path_str = data['path']
         print(f"Mkdir path_str: {path_str}")  # Debug
         
-        base_path = Path(app.config['UPLOAD_FOLDER'])
-        print(f"Mkdir base_path: {base_path}")  # Debug
-        
         # sanitize_path gibt bereits den vollen Pfad zurück
         new_dir = sanitize_path(path_str)
         print(f"Mkdir new_dir (after sanitize): {new_dir}")  # Debug
@@ -346,6 +343,11 @@ def create_directory():
             return jsonify({'error': f'Ordner oder Datei existiert bereits: {path_str}'}), 400
         
         new_dir.mkdir(parents=True, exist_ok=True)
+        
+        # base_path als absoluten Pfad
+        base_path = Path(app.config['UPLOAD_FOLDER']).resolve()
+        print(f"Mkdir base_path: {base_path}")  # Debug
+        
         rel_path = new_dir.relative_to(base_path)
         print(f"Mkdir rel_path: {rel_path}")  # Debug
         
