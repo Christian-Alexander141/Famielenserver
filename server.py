@@ -1,9 +1,11 @@
-from flask import Flask, request, jsonify, send_from_directory, send_file
+from flask import Flask, request, jsonify, send_from_directory, send_file, Response
 import os
 import shutil
 import subprocess
 import platform
 import time
+import zipfile
+import io
 from pathlib import Path
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
@@ -11,7 +13,6 @@ from flask_cors import CORS
 app = Flask(__name__)
 
 # CORS für alle Origins aktivieren (für Entwicklung)
-# In Produktion: CORS mit spezifischen Origins konfigurieren
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Konfiguration
@@ -29,18 +30,28 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() or True  # Immer true = alle Dateien erlaubt
 
 
+def sanitize_path(path):
+    """Sicherstellen, dass der Pfad innerhalb des Upload-Ordners bleibt"""
+    base = Path(app.config['UPLOAD_FOLDER']).resolve()
+    target = (base / Path(path)).resolve()
+    
+    # Prüfe, ob der Zielpfad innerhalb des Basis-Pfades liegt
+    if not str(target).startswith(str(base)):
+        raise ValueError(f"Pfad außerhalb des Upload-Ordners: {path}")
+    
+    return target
+
+
 # System Monitoring Funktionen - optimiert für Raspberry Pi
 
 def get_cpu_usage():
     """Get CPU usage percentage - optimiert für Raspberry Pi und Linux"""
     try:
-        # Linux: /proc/stat (funktioniert auf allen Linux-Systemen inkl. Raspberry Pi)
         with open('/proc/stat', 'r') as f:
             line = f.readline()
         fields = [float(column) for column in line.strip().split()[1:]]
         idle, total = fields[3], sum(fields)
         
-        # Kurze Pause für Delta-Berechnung
         time.sleep(0.1)
         
         with open('/proc/stat', 'r') as f:
@@ -51,7 +62,6 @@ def get_cpu_usage():
         idle_delta = idle2 - idle
         total_delta = total2 - total
         
-        # Vermeide Division durch Null
         if total_delta <= 0:
             return 0.0
             
@@ -65,7 +75,6 @@ def get_cpu_usage():
 def get_ram_usage():
     """Get RAM usage percentage - optimiert für Raspberry Pi"""
     try:
-        # Linux: /proc/meminfo (funktioniert auf allen Linux-Systemen)
         meminfo = {}
         with open('/proc/meminfo', 'r') as f:
             for line in f:
@@ -90,7 +99,6 @@ def get_ram_usage():
 def get_disk_usage():
     """Get disk usage percentage - optimiert für Raspberry Pi"""
     try:
-        # Prüfe Root-Partition
         total, used, free = shutil.disk_usage('/')
         if total <= 0:
             return 0.0
@@ -103,7 +111,6 @@ def get_disk_usage():
 def get_cpu_temperature():
     """Get CPU temperature for Raspberry Pi (falls verfügbar)"""
     try:
-        # Nur auf Raspberry Pi
         if platform.machine() in ['armv6l', 'armv7l', 'aarch64']:
             with open('/sys/class/thermal/thermal_zone0/temp', 'r') as f:
                 temp = int(f.read().strip()) / 1000.0
@@ -111,6 +118,39 @@ def get_cpu_temperature():
     except:
         pass
     return None
+
+
+def get_directory_tree(path):
+    """Get directory tree structure"""
+    base_path = Path(app.config['UPLOAD_FOLDER'])
+    full_path = sanitize_path(path)
+    
+    if not full_path.exists():
+        return []
+    
+    items = []
+    for item in full_path.iterdir():
+        rel_path = item.relative_to(base_path)
+        if item.is_dir():
+            items.append({
+                'name': item.name,
+                'path': str(rel_path),
+                'type': 'directory',
+                'size': 0,
+                'children': []
+            })
+        else:
+            items.append({
+                'name': item.name,
+                'path': str(rel_path),
+                'type': 'file',
+                'size': item.stat().st_size,
+                'extension': item.suffix.lower() if item.suffix else ''
+            })
+    
+    # Sort directories first, then files
+    items.sort(key=lambda x: (x['type'] != 'directory', x['name']))
+    return items
 
 
 # API Routes
@@ -126,7 +166,6 @@ def systeminfo():
         'disk_used': get_disk_usage()
     }
     
-    # CPU-Temperatur nur hinzufügen, wenn verfügbar (Raspberry Pi)
     if cpu_temp is not None:
         result['cpu_temp'] = cpu_temp
     
@@ -135,30 +174,45 @@ def systeminfo():
 
 @app.route('/api/files')
 def list_files():
-    """List all uploaded files"""
+    """List all uploaded files and directories"""
     upload_dir = Path(app.config['UPLOAD_FOLDER'])
     
     if not upload_dir.exists():
         return jsonify([])
     
-    files = []
-    for item in upload_dir.rglob('*'):
-        if item.is_file():
-            # Relative path from upload folder
-            rel_path = item.relative_to(upload_dir)
-            # Get file extension for icon
-            ext = item.suffix.lower() if item.suffix else ''
-            files.append({
+    items = []
+    for item in upload_dir.iterdir():
+        rel_path = item.relative_to(upload_dir)
+        if item.is_dir():
+            items.append({
                 'name': item.name,
                 'path': str(rel_path),
+                'type': 'directory',
+                'size': 0,
+                'extension': ''
+            })
+        else:
+            items.append({
+                'name': item.name,
+                'path': str(rel_path),
+                'type': 'file',
                 'size': item.stat().st_size,
-                'extension': ext,
-                'is_directory': False
+                'extension': item.suffix.lower() if item.suffix else ''
             })
     
-    # Sort by name
-    files.sort(key=lambda x: x['name'])
-    return jsonify(files)
+    # Sort directories first, then files
+    items.sort(key=lambda x: (x['type'] != 'directory', x['name']))
+    return jsonify(items)
+
+
+@app.route('/api/files/<path:path>')
+def list_files_in_directory(path):
+    """List files in a specific directory"""
+    try:
+        items = get_directory_tree(path)
+        return jsonify(items)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 
 @app.route('/api/upload', methods=['POST'])
@@ -175,20 +229,15 @@ def upload_file():
             continue
         
         try:
-            # Use webkitRelativePath if available (directory upload)
             file_path = file.filename
             if hasattr(file, 'webkitRelativePath') and file.webkitRelativePath:
                 file_path = file.webkitRelativePath
             
-            # Create directory structure if needed
             upload_path = Path(app.config['UPLOAD_FOLDER']) / file_path
             upload_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # Save file
             file.save(str(upload_path))
-            results.append({'success': True, 'filename': file_path, 'size': len(file.read())})
-            # Reset file pointer for potential re-read
-            file.seek(0)
+            results.append({'success': True, 'filename': file_path, 'size': os.path.getsize(str(upload_path))})
         except Exception as e:
             results.append({'success': False, 'filename': file.filename, 'error': str(e)})
     
@@ -205,31 +254,126 @@ def download_file(filename):
         return jsonify({'error': 'Datei nicht gefunden'}), 404
     
     if file_path.is_dir():
-        return jsonify({'error': 'Ist ein Verzeichnis'}), 400
+        return jsonify({'error': 'Ist ein Verzeichnis. Verwende /api/download-zip für Ordner'}), 400
     
     return send_from_directory(str(upload_dir), filename, as_attachment=True)
 
 
-@app.route('/api/delete/<path:filename>', methods=['DELETE'])
-def delete_file(filename):
-    """Delete a file"""
-    upload_dir = Path(app.config['UPLOAD_FOLDER'])
-    file_path = upload_dir / filename
-    
-    if not file_path.exists():
-        return jsonify({'error': 'Datei nicht gefunden'}), 404
-    
+@app.route('/api/download-zip/<path:path>')
+def download_zip(path):
+    """Download a directory as ZIP file"""
     try:
-        if file_path.is_dir():
-            shutil.rmtree(str(file_path))
-        else:
-            file_path.unlink()
-        return jsonify({'success': True, 'filename': filename})
+        base_path = Path(app.config['UPLOAD_FOLDER'])
+        source_path = sanitize_path(path)
+        
+        if not source_path.exists():
+            return jsonify({'error': 'Pfad nicht gefunden'}), 404
+        
+        if not source_path.is_dir():
+            return jsonify({'error': 'Ist keine Datei. Verwende /api/download für einzelne Dateien'}), 400
+        
+        # Create ZIP in memory
+        zip_buffer = io.BytesIO()
+        
+        # Get relative path for ZIP
+        rel_path = source_path.relative_to(base_path)
+        
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(source_path):
+                for file in files:
+                    file_path = Path(root) / file
+                    # Create relative path for ZIP
+                    arcname = file_path.relative_to(base_path)
+                    zipf.write(str(file_path), str(arcname))
+        
+        zip_buffer.seek(0)
+        
+        # Return ZIP file
+        return send_file(
+            zip_buffer,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f"{rel_path.name}.zip"
+        )
+    
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
-# Chatbot API - Regelbasiert (kein LLM, komplett lokal)
+@app.route('/api/mkdir/<path:path>', methods=['POST'])
+def create_directory(path):
+    """Create a new directory"""
+    try:
+        base_path = Path(app.config['UPLOAD_FOLDER'])
+        new_dir = sanitize_path(path)
+        
+        if new_dir.exists():
+            return jsonify({'error': 'Ordner existiert bereits'}), 400
+        
+        new_dir.mkdir(parents=True, exist_ok=True)
+        return jsonify({'success': True, 'path': str(new_dir.relative_to(base_path))})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/move', methods=['POST'])
+def move_item():
+    """Move or rename a file or directory"""
+    data = request.get_json()
+    source = data.get('source')
+    destination = data.get('destination')
+    
+    if not source or not destination:
+        return jsonify({'error': 'Quelle und Ziel sind erforderlich'}), 400
+    
+    try:
+        base_path = Path(app.config['UPLOAD_FOLDER'])
+        source_path = sanitize_path(source)
+        dest_path = sanitize_path(destination)
+        
+        if not source_path.exists():
+            return jsonify({'error': 'Quellpfad nicht gefunden'}), 404
+        
+        # If destination is a directory, move into it
+        if dest_path.is_dir():
+            dest_path = dest_path / source_path.name
+        
+        # Check if destination already exists
+        if dest_path.exists():
+            return jsonify({'error': 'Ziel existiert bereits'}), 400
+        
+        # Move the item
+        shutil.move(str(source_path), str(dest_path))
+        
+        return jsonify({
+            'success': True,
+            'source': source,
+            'destination': str(dest_path.relative_to(base_path))
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/delete/<path:path>', methods=['DELETE'])
+def delete_item(path):
+    """Delete a file or directory"""
+    try:
+        base_path = Path(app.config['UPLOAD_FOLDER'])
+        item_path = sanitize_path(path)
+        
+        if not item_path.exists():
+            return jsonify({'error': 'Pfad nicht gefunden'}), 404
+        
+        if item_path.is_dir():
+            shutil.rmtree(str(item_path))
+        else:
+            item_path.unlink()
+        
+        return jsonify({'success': True, 'path': path})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/chat', methods=['POST'])
 def chat():
     """
@@ -328,7 +472,6 @@ def get_search_hint(query, all_files):
     if not query:
         return "Versuchen Sie z.B.: 'Urlaub', 'PDFs', '2024' oder 'Bilder'"
     
-    # Zähle Dateitypen
     extensions = {}
     for file in all_files:
         ext = file['extension']
@@ -352,4 +495,5 @@ if __name__ == '__main__':
     print(f"Starting Familienserver Backend on {args.host}:{args.port}")
     print("CORS enabled for all origins (development mode)")
     print("Optimized for Raspberry Pi")
+    print(f"Upload folder: {UPLOAD_FOLDER}")
     app.run(host=args.host, port=args.port, debug=True)

@@ -8,7 +8,13 @@ import ChatInterface from "@/app/components/ChatInterface";
 
 export default function Home() {
   const [devMode, setDevMode] = useState(true);
-  const [files, setFiles] = useState<Array<{ name: string; path: string; size: number }>>([]);
+  const [files, setFiles] = useState<Array<{
+    name: string;
+    path: string;
+    size: number;
+    type: 'file' | 'directory';
+    extension?: string;
+  }>>([]);
   const [loading, setLoading] = useState(true);
   const [systemInfo, setSystemInfo] = useState({
     cpu: 0,
@@ -17,9 +23,10 @@ export default function Home() {
   });
   const [serverOnline, setServerOnline] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [currentPath, setCurrentPath] = useState("");
+  const [pathHistory, setPathHistory] = useState<string[]>([]);
 
   // API Base URL - immer auf localhost:5000 setzen
-  // (kann über Umgebungsvariable überschrieben werden)
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 
   // Prüfe Server-Verbindung
@@ -45,12 +52,14 @@ export default function Home() {
   }, [apiBaseUrl]);
 
   // Dateien abrufen
-  const fetchFiles = useCallback(async () => {
+  const fetchFiles = useCallback(async (path: string = "") => {
     try {
-      const response = await fetch(`${apiBaseUrl}/api/files`);
+      const endpoint = path ? `${apiBaseUrl}/api/files/${encodeURIComponent(path)}` : `${apiBaseUrl}/api/files`;
+      const response = await fetch(endpoint);
       if (response.ok) {
         const data = await response.json();
         setFiles(data);
+        setCurrentPath(path);
       }
     } catch (error) {
       console.error("Fehler beim Laden der Dateien:", error);
@@ -68,7 +77,6 @@ export default function Home() {
       }
     } catch (error) {
       console.error("Fehler beim Laden der Systeminformationen:", error);
-      // Mock-Daten für Entwicklungsmodus
       setSystemInfo({
         cpu: Math.random() * 100,
         ram_used: 40 + Math.random() * 40,
@@ -90,23 +98,49 @@ export default function Home() {
   // Handle file upload
   const handleUploadSuccess = useCallback(() => {
     if (!devMode) {
-      fetchFiles();
+      fetchFiles(currentPath);
     }
-  }, [devMode, fetchFiles]);
+  }, [devMode, fetchFiles, currentPath]);
 
   // Handle file deletion
-  const handleDelete = useCallback(async (filename: string) => {
+  const handleDelete = useCallback(async (path: string) => {
     try {
-      const response = await fetch(`${apiBaseUrl}/api/delete/${encodeURIComponent(filename)}`, {
+      const response = await fetch(`${apiBaseUrl}/api/delete/${encodeURIComponent(path)}`, {
         method: "DELETE",
       });
       if (response.ok) {
-        await fetchFiles();
+        await fetchFiles(currentPath);
       }
     } catch (error) {
-      console.error("Fehler beim Löschen der Datei:", error);
+      console.error("Fehler beim Löschen:", error);
     }
-  }, [apiBaseUrl, fetchFiles]);
+  }, [apiBaseUrl, fetchFiles, currentPath]);
+
+  // Handle directory navigation
+  const handleEnterDir = useCallback((dirPath: string) => {
+    const newPath = currentPath ? `${currentPath}/${dirPath}` : dirPath;
+    // Add current path to history before navigating
+    if (currentPath) {
+      setPathHistory(prev => [...prev, currentPath]);
+    }
+    fetchFiles(newPath);
+  }, [currentPath, fetchFiles]);
+
+  // Handle going back in path history
+  const handleGoBack = useCallback(() => {
+    if (pathHistory.length > 0) {
+      const prevPath = pathHistory[pathHistory.length - 1];
+      setPathHistory(prev => prev.slice(0, -1));
+      fetchFiles(prevPath);
+    }
+  }, [pathHistory, fetchFiles]);
+
+  // Handle going to root
+  const handleGoRoot = useCallback(() => {
+    setPathHistory([]);
+    setCurrentPath("");
+    fetchFiles("");
+  }, [fetchFiles]);
 
   // Initial load
   useEffect(() => {
@@ -134,8 +168,38 @@ export default function Home() {
     }
   }, [devMode, serverOnline]);
 
+  // Get path display for breadcrumbs
+  const getPathDisplay = () => {
+    if (!currentPath) return "/";
+    const parts = currentPath.split('/');
+    return parts.map((part, index) => {
+      const pathSoFar = parts.slice(0, index + 1).join('/');
+      return (
+        <span key={index}>
+          <button
+            onClick={() => {
+              const goToPath = parts.slice(0, index + 1).join('/');
+              setPathHistory(prev => {
+                const currentIndex = prev.findIndex(p => p === currentPath);
+                if (currentIndex > -1) {
+                  return prev.slice(0, currentIndex);
+                }
+                return [...prev, currentPath];
+              });
+              fetchFiles(goToPath);
+            }}
+            className="text-blue-400 hover:text-blue-300"
+          >
+            {part}
+          </button>
+          {index < parts.length - 1 && " / "}
+        </span>
+      );
+    });
+  };
+
   return (
-    <div className="container mx-auto max-w-2xl px-6 py-6">
+    <div className="container mx-auto max-w-4xl px-6 py-6">
       <h1 className="text-center text-xl font-medium mb-6 relative">
         🗂️ Familienserver
         <button
@@ -156,15 +220,41 @@ export default function Home() {
           <p className="text-sm text-yellow-300 mt-1">
             API-URL: <code className="bg-gray-800 px-2 py-1 rounded">{apiBaseUrl}</code>
           </p>
-          <p className="text-sm text-yellow-300 mt-1">
-            Frontend: <code className="bg-gray-800 px-2 py-1 rounded">http://localhost:3000</code>
-          </p>
           <button
             onClick={checkServerConnection}
             className="ios-button mt-2 bg-yellow-600 hover:bg-yellow-700"
           >
             🔄 Verbindung erneut prüfen
           </button>
+        </div>
+      )}
+
+      {/* Breadcrumb Navigation */}
+      {serverOnline && (
+        <div className="ios-card mb-4">
+          <nav className="flex items-center gap-2 text-sm">
+            <button
+              onClick={handleGoRoot}
+              className="text-blue-400 hover:text-blue-300"
+            >
+              🏠 Root
+            </button>
+            {currentPath && (
+              <>
+                <span className="text-gray-500">/</span>
+                {getPathDisplay()}
+              </>
+            )}
+            {pathHistory.length > 0 && (
+              <button
+                onClick={handleGoBack}
+                className="text-gray-400 hover:text-white ml-auto"
+                title="Zurück"
+              >
+                ← Zurück
+              </button>
+            )}
+          </nav>
         </div>
       )}
 
@@ -179,7 +269,12 @@ export default function Home() {
       </div>
 
       <div className="ios-card">
-        <h2 className="text-lg font-medium mb-4">📁 Dateien im Server</h2>
+        <h2 className="text-lg font-medium mb-4">
+          📁 Dateien im Server
+          <span className="text-sm text-gray-500 ml-2">
+            {files.length} Elemente
+          </span>
+        </h2>
         {loading ? (
           <div className="text-center py-4">
             <div className="loading-spinner mx-auto mb-2"></div>
@@ -190,7 +285,9 @@ export default function Home() {
             files={files}
             apiBaseUrl={apiBaseUrl}
             onDelete={handleDelete}
+            onRefresh={() => fetchFiles(currentPath)}
             devMode={devMode}
+            currentPath={currentPath}
           />
         )}
       </div>
