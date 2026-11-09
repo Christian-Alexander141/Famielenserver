@@ -247,4 +247,10 @@ def chat():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    import argparse
+    parser = argparse.ArgumentParser(description='Familienserver Backend')
+    parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
+    parser.add_argument('--port', type=int, default=5000, help='Port to listen on')
+    args = parser.parse_args()
+    
+    app.run(host=args.host, port=args.port, debug=True)

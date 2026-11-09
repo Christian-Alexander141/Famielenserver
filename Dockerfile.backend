@@ -1,0 +1,30 @@
+# Flask Backend Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# System-Abhängigkeiten installieren
+RUN apt-get update && apt-get install -y \
+    gcc \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Kopiere requirements.txt und installiere Python-Abhängigkeiten
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Kopiere Backend-Quellcode
+COPY server.py ./
+
+# Erstelle Upload-Ordner
+RUN mkdir -p familienserver/public/uploads
+
+# Port freigeben
+EXPOSE 5000
+
+# Umgebungsvariablen
+ENV FLASK_HOST=0.0.0.0
+ENV FLASK_PORT=5000
+
+# Starten
+CMD ["python3", "server.py", "--host", "0.0.0.0", "--port", "5000"]

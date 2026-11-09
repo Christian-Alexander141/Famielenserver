@@ -1,0 +1,37 @@
+# Next.js Frontend Dockerfile
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Kopiere package.json und package-lock.json
+COPY familienserver/package*.json ./
+
+# Installiere Abhängigkeiten
+RUN npm install
+
+# Kopiere Frontend-Quellcode
+COPY familienserver/ ./
+
+# Baue Next.js Anwendung
+RUN npm run build
+
+# Produktionsimage
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Kopiere gebildetes Frontend
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
+
+# Port freigeben
+EXPOSE 3000
+
+# Umgebungsvariablen
+ENV NODE_ENV=production
+ENV NEXT_PUBLIC_API_BASE_URL=http://backend:5000
+
+# Starten
+CMD ["npm", "run", "start", "--", "--port", "3000"]
