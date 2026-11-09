@@ -118,11 +118,21 @@ export default function Home() {
 
   // Handle directory navigation
   const handleEnterDir = useCallback((dirPath: string) => {
-    const newPath = currentPath ? `${currentPath}/${dirPath}` : dirPath;
+    // Prüfe, ob dirPath bereits ein absoluter Pfad ist (enthält currentPath)
+    // oder ob es ein relativer Pfad (nur der Name) ist
+    let newPath = dirPath;
+    
+    // Wenn currentPath gesetzt ist und dirPath nicht mit currentPath beginnt,
+    // dann müssen wir sie kombinieren
+    if (currentPath && !dirPath.startsWith(currentPath + '/') && dirPath !== currentPath) {
+      newPath = `${currentPath}/${dirPath}`;
+    }
+    
     // Add current path to history before navigating
-    if (currentPath) {
+    if (currentPath && currentPath !== newPath) {
       setPathHistory(prev => [...prev, currentPath]);
     }
+    setCurrentPath(newPath);
     fetchFiles(newPath);
   }, [currentPath, fetchFiles]);
 
@@ -288,6 +298,7 @@ export default function Home() {
             onRefresh={() => fetchFiles(currentPath)}
             devMode={devMode}
             currentPath={currentPath}
+            onNavigate={handleEnterDir}
           />
         )}
       </div>

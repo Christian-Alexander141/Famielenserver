@@ -19,6 +19,7 @@ interface FileListProps {
   onRefresh: () => void;
   devMode: boolean;
   currentPath?: string;
+  onNavigate?: (path: string) => void;
 }
 
 export default function FileList({ 
@@ -27,7 +28,8 @@ export default function FileList({
   onDelete, 
   onRefresh,
   devMode,
-  currentPath = "" 
+  currentPath = "",
+  onNavigate
 }: FileListProps) {
   const [items, setItems] = useState<FileItem[]>(initialFiles);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -104,7 +106,10 @@ export default function FileList({
     
     try {
       const path = currentPath ? `${currentPath}/${newDirName}` : newDirName;
+      console.log("Creating dir with path:", path, "currentPath:", currentPath);  // Debug
       const response = await axios.post(`${apiBaseUrl}/api/mkdir`, { path });
+      
+      console.log("Mkdir response:", response.data);  // Debug
       
       if (response.data.success) {
         setShowCreateDir(false);
@@ -112,6 +117,8 @@ export default function FileList({
         setSuccess("Ordner erstellt!");
         onRefresh();
         setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(response.data.error || "Fehler beim Erstellen des Ordners");
       }
     } catch (err) {
       setError("Fehler beim Erstellen des Ordners");
@@ -215,9 +222,11 @@ export default function FileList({
 
   // Enter directory
   const handleEnterDir = (path: string) => {
-    // Diese Funktion wird in der Hauptseite behandelt
-    // Hier nur für spätere Erweiterungen
-    console.log("Enter directory:", path);
+    if (onNavigate) {
+      onNavigate(path);
+    } else {
+      console.log("Enter directory:", path);
+    }
   };
 
   // Open move dialog
