@@ -363,8 +363,6 @@ def move_item():
     source = data.get('source')
     destination = data.get('destination')
     
-    print(f"Move received: source={source}, destination={destination}")  # Debug
-    
     if not source or not destination:
         return jsonify({'error': 'Quelle und Ziel sind erforderlich'}), 400
     
@@ -373,18 +371,12 @@ def move_item():
         source_path = sanitize_path(source)
         dest_path = sanitize_path(destination)
         
-        print(f"Move paths: source_path={source_path}, dest_path={dest_path}")  # Debug
-        print(f"Move dest_path.is_dir()={dest_path.is_dir()}")  # Debug
-        print(f"Move dest_path.exists()={dest_path.exists()}")  # Debug
-        
         if not source_path.exists():
             return jsonify({'error': f'Quellpfad nicht gefunden: {source}'}), 404
         
         # If destination is a directory, move into it
         if dest_path.is_dir():
             dest_path = dest_path / source_path.name
-        
-        print(f"Move final dest_path={dest_path}")  # Debug
         
         # Check if destination already exists
         if dest_path.exists():
@@ -394,7 +386,6 @@ def move_item():
         shutil.move(str(source_path), str(dest_path))
         
         rel_dest_path = dest_path.relative_to(base_path)
-        print(f"Move rel_dest_path={rel_dest_path}")  # Debug
         
         return jsonify({
             'success': True,
@@ -403,8 +394,6 @@ def move_item():
             'message': f'Erfolgreich verschoben von {source} nach {destination}'
         })
     except Exception as e:
-        print(f"Move error: {e}")
-        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
