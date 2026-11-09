@@ -265,12 +265,9 @@ export default function FileList({
     const sourcePath = draggedItem;
     setDraggedItem(null);
     
-    // Zielpfad: wenn targetPath ein Ordner ist, dann verschiebe in diesen Ordner
-    // Neuer Pfad = targetPath/sourceName
-    const sourceName = sourcePath.split('/').pop();
-    const destinationPath = targetPath.endsWith('/') 
-      ? `${targetPath}${sourceName}`
-      : `${targetPath}/${sourceName}`;
+    // Für Ordner: targetPath ist der Zielordner, Backend fügt den Dateinamen hinzu
+    // destination ist also nur der Zielordner-Pfad
+    const destinationPath = targetPath;
     
     console.log("Drop:", { sourcePath, targetPath, destinationPath });  // Debug
     
@@ -283,6 +280,7 @@ export default function FileList({
       console.log("Move response:", response.data);  // Debug
       
       if (response.data.success) {
+        const sourceName = sourcePath.split('/').pop();
         setSuccess(`"${sourceName}" nach "${targetPath}" verschoben!`);
         onRefresh();
         setTimeout(() => setSuccess(null), 3000);
