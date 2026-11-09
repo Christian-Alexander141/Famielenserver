@@ -43,6 +43,8 @@ export default function FileList({
   const [renameName, setRenameName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
+  const [dragOverItem, setDragOverItem] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   // Aktualisiere Items wenn Props ändern
@@ -229,6 +231,72 @@ export default function FileList({
     }
   };
 
+  // Drag and Drop handlers
+  const handleDragStart = (e: React.DragEvent, itemPath: string, isDirectory: boolean) => {
+    if (devMode) {
+      e.preventDefault();
+      return;
+    }
+    if (!isDirectory) {
+      setDraggedItem(itemPath);
+      e.dataTransfer.setData('text/plain', itemPath);
+      e.dataTransfer.effectAllowed = 'move';
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent, itemPath: string, isDirectory: boolean) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isDirectory && draggedItem && draggedItem !== itemPath) {
+      setDragOverItem(itemPath);
+      e.dataTransfer.dropEffect = 'move';
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverItem(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetPath: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverItem(null);
+    
+    if (devMode || !draggedItem) return;
+    
+    const sourcePath = draggedItem;
+    setDraggedItem(null);
+    
+    // Zielpfad: wenn targetPath ein Ordner ist, dann verschiebe in diesen Ordner
+    // Neuer Pfad = targetPath/sourceName
+    const sourceName = sourcePath.split('/').pop();
+    const destinationPath = targetPath.endsWith('/') 
+      ? `${targetPath}${sourceName}`
+      : `${targetPath}/${sourceName}`;
+    
+    try {
+      const response = await axios.post(`${apiBaseUrl}/api/move`, {
+        source: sourcePath,
+        destination: destinationPath
+      });
+      
+      if (response.data.success) {
+        setSuccess(`"${sourceName}" nach "${targetPath}" verschoben!`);
+        onRefresh();
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch (err) {
+      setError("Fehler beim Verschieben");
+      console.error("Drop move error:", err);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
   // Open move dialog
   const openMoveDialog = (path: string, name: string) => {
     setMoveSource(path);
@@ -273,75 +341,103 @@ export default function FileList({
         </p>
       ) : (
         <ul className="file-list space-y-2">
-          {items.map((item) => (
-            <li key={item.path} className="flex items-center justify-between group p-2 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="flex items-center gap-3 flex-1 overflow-hidden">
-                <span className="text-xl">{getFileIcon(item)}</span>
-                <div className="overflow-hidden">
-                  <button
-                    onClick={() => {
-                      if (item.type === 'directory') {
-                        handleEnterDir(item.path);
-                      } else {
-                        handleDownload(item.path, false);
-                      }
-                    }}
-                    className="text-left hover:underline text-blue-400 hover:text-blue-300 transition-colors truncate"
-                  >
-                    {item.name}
-                  </button>
-                  {item.type === 'file' && (
-                    <div className="text-xs text-gray-500">
-                      {formatFileSize(item.size)}
-                    </div>
-                  )}
+          {items.map((item) => {
+            const isDragging = draggedItem === item.path;
+            const isDragOver = dragOverItem === item.path && item.type === 'directory';
+            
+            return (
+              <li 
+                key={item.path}
+                className={`flex items-center justify-between group p-2 rounded-lg transition-colors ${
+                  isDragging ? 'bg-blue-900/50 opacity-50' : ''
+                } ${isDragOver ? 'bg-green-900/30 border-2 border-green-600' : 'hover:bg-gray-800'}`}
+                draggable={!devMode && item.type === 'file'}
+                onDragStart={(e) => handleDragStart(e, item.path, item.type === 'directory')}
+                onDragOver={(e) => handleDragOver(e, item.path, item.type === 'directory')}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, item.path)}
+                onDragEnd={handleDragEnd}
+              >
+                <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                  <span className="text-xl">{getFileIcon(item)}</span>
+                  <div className="overflow-hidden">
+                    <button
+                      onClick={() => {
+                        if (item.type === 'directory') {
+                          handleEnterDir(item.path);
+                        } else {
+                          handleDownload(item.path, false);
+                        }
+                      }}
+                      className="text-left hover:underline text-blue-400 hover:text-blue-300 transition-colors truncate"
+                    >
+                      {item.name}
+                    </button>
+                    {item.type === 'file' && (
+                      <div className="text-xs text-gray-500">
+                        {formatFileSize(item.size)}
+                      </div>
+                    )}
+                    {item.type === 'directory' && isDragOver && (
+                      <div className="text-xs text-green-400 mt-1">
+                        Drop hier zum Verschieben
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-              
-              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                {/* Download Button */}
-                <button
-                  onClick={() => handleDownload(item.path, item.type === 'directory')}
-                  className="text-blue-500 hover:text-blue-400 transition-colors"
-                  title={item.type === 'directory' ? "Ordner als ZIP herunterladen" : "Datei herunterladen"}
-                  disabled={devMode}
-                >
-                  ⬇️
-                </button>
                 
-                {/* Rename Button */}
-                <button
-                  onClick={() => openRenameDialog(item.path, item.name)}
-                  className="text-yellow-500 hover:text-yellow-400 transition-colors"
-                  title="Umbenennen"
-                  disabled={devMode}
-                >
-                  ✏️
-                </button>
-                
-                {/* Move Button */}
-                <button
-                  onClick={() => openMoveDialog(item.path, item.name)}
-                  className="text-purple-500 hover:text-purple-400 transition-colors"
-                  title="Verschieben"
-                  disabled={devMode}
-                >
-                  🔄
-                </button>
-                
-                {/* Delete Button */}
-                <button
-                  onClick={() => confirmDelete(item.path, item.name)}
-                  className="text-red-500 hover:text-red-400 transition-colors"
-                  title="Löschen"
-                  disabled={devMode || deleting === item.path}
-                >
-                  {deleting === item.path ? "..." : "🗑️"}
-                </button>
-              </div>
-            </li>
-          ))}
+                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Download Button */}
+                  <button
+                    onClick={() => handleDownload(item.path, item.type === 'directory')}
+                    className="text-blue-500 hover:text-blue-400 transition-colors"
+                    title={item.type === 'directory' ? "Ordner als ZIP herunterladen" : "Datei herunterladen"}
+                    disabled={devMode}
+                  >
+                    ⬇️
+                  </button>
+                  
+                  {/* Rename Button */}
+                  <button
+                    onClick={() => openRenameDialog(item.path, item.name)}
+                    className="text-yellow-500 hover:text-yellow-400 transition-colors"
+                    title="Umbenennen"
+                    disabled={devMode}
+                  >
+                    ✏️
+                  </button>
+                  
+                  {/* Move Button */}
+                  <button
+                    onClick={() => openMoveDialog(item.path, item.name)}
+                    className="text-purple-500 hover:text-purple-400 transition-colors"
+                    title="Verschieben"
+                    disabled={devMode}
+                  >
+                    🔄
+                  </button>
+                  
+                  {/* Delete Button */}
+                  <button
+                    onClick={() => confirmDelete(item.path, item.name)}
+                    className="text-red-500 hover:text-red-400 transition-colors"
+                    title="Löschen"
+                    disabled={devMode || deleting === item.path}
+                  >
+                    {deleting === item.path ? "..." : "🗑️"}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
+      )}
+
+      {/* Drag & Drop Hinweis */}
+      {!devMode && items.length > 0 && (
+        <div className="mt-4 p-3 bg-gray-800 rounded-lg text-sm text-gray-400">
+          💡 **Tipp:** Dateien können per Drag & Drop in Ordner verschoben werden
+        </div>
       )}
 
       {/* Aktions-Buttons */}
