@@ -114,8 +114,8 @@ export default function FileUpload({ apiBaseUrl, onUploadSuccess, devMode }: Fil
         onChange={handleFileChange}
         multiple
         // @ts-ignore - webkitdirectory and directory are browser-specific attributes
-        webkitdirectory
-        directory
+        webkitdirectory=""
+        directory=""
         className="hidden"
       />
       
