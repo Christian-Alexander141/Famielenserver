@@ -108,10 +108,7 @@ export default function FileList({
     
     try {
       const path = currentPath ? `${currentPath}/${newDirName}` : newDirName;
-      console.log("Creating dir with path:", path, "currentPath:", currentPath);  // Debug
       const response = await axios.post(`${apiBaseUrl}/api/mkdir`, { path });
-      
-      console.log("Mkdir response:", response.data);  // Debug
       
       if (response.data.success) {
         setShowCreateDir(false);

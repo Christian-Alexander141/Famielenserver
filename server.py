@@ -327,17 +327,13 @@ def create_directory():
     """Create a new directory - accepts JSON body with 'path' field"""
     try:
         data = request.get_json()
-        print(f"Mkdir received data: {data}")  # Debug
-        
         if not data or 'path' not in data:
             return jsonify({'error': 'Pfad ist erforderlich'}), 400
         
         path_str = data['path']
-        print(f"Mkdir path_str: {path_str}")  # Debug
         
         # sanitize_path gibt bereits den vollen Pfad zurück
         new_dir = sanitize_path(path_str)
-        print(f"Mkdir new_dir (after sanitize): {new_dir}")  # Debug
         
         if new_dir.exists():
             return jsonify({'error': f'Ordner oder Datei existiert bereits: {path_str}'}), 400
@@ -346,10 +342,7 @@ def create_directory():
         
         # base_path als absoluten Pfad
         base_path = Path(app.config['UPLOAD_FOLDER']).resolve()
-        print(f"Mkdir base_path: {base_path}")  # Debug
-        
         rel_path = new_dir.relative_to(base_path)
-        print(f"Mkdir rel_path: {rel_path}")  # Debug
         
         return jsonify({
             'success': True, 
@@ -358,11 +351,8 @@ def create_directory():
         })
     except ValueError as e:
         # Spezifische Fehlermeldung für Pfad-Probleme
-        print(f"Mkdir validation error: {e}")
         return jsonify({'error': str(e)}), 400
     except Exception as e:
-        print(f"Mkdir error: {e}")
-        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
