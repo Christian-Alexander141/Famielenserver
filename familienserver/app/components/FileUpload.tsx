@@ -60,7 +60,7 @@ export default function FileUpload({ apiBaseUrl, onUploadSuccess, devMode }: Fil
 
         if (devMode) {
           // In Entwicklungsmodus: simulierter Upload
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 200));
           return { success: true, filename: filePath };
         }
 
@@ -113,7 +113,9 @@ export default function FileUpload({ apiBaseUrl, onUploadSuccess, devMode }: Fil
         id="fileInput"
         onChange={handleFileChange}
         multiple
-        // @ts-ignore - webkitdirectory and directory are browser-specific attributes
+        // Use webkitdirectory for directory selection (Chrome, Edge, Opera)
+        // Use directory for Firefox
+        // Empty string is required for React
         webkitdirectory=""
         directory=""
         className="hidden"
@@ -157,6 +159,14 @@ export default function FileUpload({ apiBaseUrl, onUploadSuccess, devMode }: Fil
           {uploadProgress < 100 ? `Lade hoch: ${uploadProgress}%` : "Fertig!"}
         </div>
       )}
+
+      {/* Browser compatibility notice */}
+      <div className="text-xs text-gray-500 mt-2 w-full">
+        <p>
+          💡 <strong>Hinweis:</strong> Ordner-Upload funktioniert in Chrome, Edge und Opera. 
+          In Firefox können nur einzelne Dateien hochgeladen werden.
+        </p>
+      </div>
     </div>
   );
 }

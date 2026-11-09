@@ -10,6 +10,7 @@ interface SystemInfo {
   cpu: number;
   ram_used: number;
   disk_used: number;
+  cpu_temp?: number; // Optional CPU temperature (for Raspberry Pi)
 }
 
 interface SystemMonitorProps {
@@ -88,7 +89,7 @@ export default function SystemMonitor({ systemInfo }: SystemMonitorProps) {
         }
       );
     };
-  }, [systemInfo]);
+  }, []);
 
   // Update charts when systemInfo changes
   useEffect(() => {
@@ -108,20 +109,44 @@ export default function SystemMonitor({ systemInfo }: SystemMonitorProps) {
     updateChartData(diskChartInstance, systemInfo.disk_used);
   }, [systemInfo]);
 
+  // Get temperature color based on value
+  const getTempColor = (temp: number | undefined) => {
+    if (temp === undefined) return "text-gray-500";
+    if (temp < 50) return "text-blue-500";
+    if (temp < 70) return "text-yellow-500";
+    return "text-red-500";
+  };
+
   return (
-    <div className="chart-row">
-      <div className="chart-container">
-        <canvas ref={cpuChartRef} className="w-32 h-32" />
-        <p className="mt-2 text-sm">CPU: {systemInfo.cpu.toFixed(1)}%</p>
+    <div>
+      <div className="chart-row">
+        <div className="chart-container">
+          <canvas ref={cpuChartRef} className="w-32 h-32" />
+          <p className="mt-2 text-sm">
+            CPU: {systemInfo.cpu.toFixed(1)}%
+            {systemInfo.cpu_temp && (
+              <span className={`ml-2 ${getTempColor(systemInfo.cpu_temp)}`}>
+                ({systemInfo.cpu_temp}°C)
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="chart-container">
+          <canvas ref={ramChartRef} className="w-32 h-32" />
+          <p className="mt-2 text-sm">RAM: {systemInfo.ram_used.toFixed(1)}%</p>
+        </div>
+        <div className="chart-container">
+          <canvas ref={diskChartRef} className="w-32 h-32" />
+          <p className="mt-2 text-sm">Speicher: {systemInfo.disk_used.toFixed(1)}%</p>
+        </div>
       </div>
-      <div className="chart-container">
-        <canvas ref={ramChartRef} className="w-32 h-32" />
-        <p className="mt-2 text-sm">RAM: {systemInfo.ram_used.toFixed(1)}%</p>
-      </div>
-      <div className="chart-container">
-        <canvas ref={diskChartRef} className="w-32 h-32" />
-        <p className="mt-2 text-sm">Speicher: {systemInfo.disk_used.toFixed(1)}%</p>
-      </div>
+      
+      {/* Raspberry Pi Info */}
+      {systemInfo.cpu_temp !== undefined && (
+        <div className="mt-4 text-xs text-gray-500 text-center">
+          ⚡ Raspberry Pi - CPU-Temperatur wird angezeigt
+        </div>
+      )}
     </div>
   );
 }
