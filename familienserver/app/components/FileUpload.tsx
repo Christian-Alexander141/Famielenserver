@@ -42,7 +42,7 @@ export default function FileUpload({ apiBaseUrl, onUploadSuccess, devMode }: Fil
 
   const handleUpload = async () => {
     if (!selectedFiles || selectedFiles.length === 0) {
-      setError("Bitte zuerst Dateien oder Ordner auswählen.");
+      setError("Bitte zuerst Dateien auswählen.");
       return;
     }
 
@@ -99,71 +99,64 @@ export default function FileUpload({ apiBaseUrl, onUploadSuccess, devMode }: Fil
     }
   };
 
-  const handleSelectFiles = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
   return (
-    <div className="upload-row">
-      <input
-        type="file"
-        ref={fileInputRef}
-        id="fileInput"
-        onChange={handleFileChange}
-        multiple
-        // Use webkitdirectory for directory selection (Chrome, Edge, Opera)
-        // Use directory for Firefox
-        // Empty string is required for React
-        webkitdirectory=""
-        directory=""
-        className="hidden"
-      />
-      
-      <button
-        onClick={handleSelectFiles}
-        className="ios-button"
-        disabled={uploading}
-      >
-        📁 Dateien/Ordner auswählen
-      </button>
-      
-      <span 
-        id="fileName"
-        className="text-sm text-gray-400 min-w-[120px] max-w-[300px] truncate"
-      >
-        {getFileNameDisplay()}
-      </span>
-      
-      <button
-        onClick={handleUpload}
-        className="ios-button"
-        disabled={!selectedFiles || uploading}
-      >
-        {uploading ? (
-          <span>⬆️ Hochladen... {uploadProgress}%</span>
-        ) : (
-          <span>⬆️ Hochladen</span>
-        )}
-      </button>
+    <div className="space-y-4">
+      {/* File input and buttons in a row */}
+      <div className="flex flex-wrap items-center gap-4">
+        {/* File input - visible so user can see it's clickable */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          id="fileInput"
+          onChange={handleFileChange}
+          multiple
+          // Use webkitdirectory for directory selection (Chrome, Edge, Opera, Safari)
+          // Note: Firefox does not support directory selection
+          webkitdirectory=""
+          className="block w-full max-w-md text-sm text-gray-400"
+          accept="*"
+        />
+        
+        {/* Upload button - disabled only when no files selected or uploading */}
+        <button
+          onClick={handleUpload}
+          className="ios-button flex-shrink-0"
+          disabled={!selectedFiles || uploading}
+        >
+          {uploading ? (
+            <span>⬆️ Hochladen... {uploadProgress}%</span>
+          ) : (
+            <span>⬆️ Hochladen</span>
+          )}
+        </button>
+      </div>
 
+      {/* Selected files display */}
+      {selectedFiles && selectedFiles.length > 0 && (
+        <div className="text-sm text-gray-400">
+          {getFileNameDisplay()}
+        </div>
+      )}
+
+      {/* Error message */}
       {error && (
-        <div className="text-red-500 text-sm mt-2 break-all">
+        <div className="text-red-500 text-sm">
           {error}
         </div>
       )}
       
+      {/* Upload progress */}
       {uploading && (
-        <div className="text-green-500 text-sm mt-2">
+        <div className="text-green-500 text-sm">
           {uploadProgress < 100 ? `Lade hoch: ${uploadProgress}%` : "Fertig!"}
         </div>
       )}
 
       {/* Browser compatibility notice */}
-      <div className="text-xs text-gray-500 mt-2 w-full">
+      <div className="text-xs text-gray-500">
         <p>
-          💡 <strong>Hinweis:</strong> Ordner-Upload funktioniert in Chrome, Edge und Opera. 
+          💡 <strong>Hinweis:</strong> 
+          In Chrome, Edge, Opera und Safari können Sie ganze Ordner auswählen. 
           In Firefox können nur einzelne Dateien hochgeladen werden.
         </p>
       </div>
