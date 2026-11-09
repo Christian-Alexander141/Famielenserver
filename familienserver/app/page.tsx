@@ -18,7 +18,9 @@ export default function Home() {
   const [serverOnline, setServerOnline] = useState(false);
   const [showChat, setShowChat] = useState(false);
 
-  const apiBaseUrl = devMode ? "http://localhost:5000" : "";
+  // API Base URL - immer auf localhost:5000 setzen
+  // (kann über Umgebungsvariable überschrieben werden)
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 
   // Prüfe Server-Verbindung
   const checkServerConnection = useCallback(async () => {
@@ -32,7 +34,8 @@ export default function Home() {
       } else {
         throw new Error("Server nicht erreichbar");
       }
-    } catch {
+    } catch (error) {
+      console.error("Server-Verbindung fehlerhaft:", error);
       setDevMode(true);
       setServerOnline(false);
       setFiles([]);
@@ -111,13 +114,11 @@ export default function Home() {
     
     // Auto-refresh system info
     const interval = setInterval(() => {
-      if (!devMode || serverOnline) {
-        fetchSystemInfo();
-      }
+      fetchSystemInfo();
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [checkServerConnection, fetchSystemInfo, devMode, serverOnline]);
+  }, [checkServerConnection, fetchSystemInfo]);
 
   // Mock System Info für Entwicklungsmodus
   useEffect(() => {
@@ -141,9 +142,31 @@ export default function Home() {
           onClick={toggleMode}
           className="mode-toggle"
         >
-          {serverOnline ? "✅ Produktivmodus" : devMode ? "🧪 Entwicklungsmodus" : "🔄 Modus wechseln"}
+          {serverOnline ? "✅ Produktivmodus" : devMode ? "🔄 Server prüfen" : "🧪 Entwicklungsmodus"}
         </button>
       </h1>
+
+      {/* Server Connection Status */}
+      {!serverOnline && devMode && (
+        <div className="ios-card mb-4 bg-yellow-900/20 border border-yellow-700">
+          <h2 className="text-yellow-400 mb-2">⚠️ Keine Verbindung zum Server</h2>
+          <p className="text-sm text-yellow-300">
+            Bitte starte das Backend: <code className="bg-gray-800 px-2 py-1 rounded">python3 server.py</code>
+          </p>
+          <p className="text-sm text-yellow-300 mt-1">
+            API-URL: <code className="bg-gray-800 px-2 py-1 rounded">{apiBaseUrl}</code>
+          </p>
+          <p className="text-sm text-yellow-300 mt-1">
+            Frontend: <code className="bg-gray-800 px-2 py-1 rounded">http://localhost:3000</code>
+          </p>
+          <button
+            onClick={checkServerConnection}
+            className="ios-button mt-2 bg-yellow-600 hover:bg-yellow-700"
+          >
+            🔄 Verbindung erneut prüfen
+          </button>
+        </div>
+      )}
 
       {/* Hauptfunktionen */}
       <div className="ios-card">

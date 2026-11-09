@@ -6,8 +6,13 @@ import platform
 import time
 from pathlib import Path
 from werkzeug.utils import secure_filename
+from flask_cors import CORS
 
 app = Flask(__name__)
+
+# CORS für alle Origins aktivieren (für Entwicklung)
+# In Produktion: CORS mit spezifischen Origins konfigurieren
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Konfiguration
 UPLOAD_FOLDER = Path('familienserver/public/uploads')
@@ -345,5 +350,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     print(f"Starting Familienserver Backend on {args.host}:{args.port}")
+    print("CORS enabled for all origins (development mode)")
     print("Optimized for Raspberry Pi")
     app.run(host=args.host, port=args.port, debug=True)
