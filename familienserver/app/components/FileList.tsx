@@ -272,11 +272,15 @@ export default function FileList({
       ? `${targetPath}${sourceName}`
       : `${targetPath}/${sourceName}`;
     
+    console.log("Drop:", { sourcePath, targetPath, destinationPath });  // Debug
+    
     try {
       const response = await axios.post(`${apiBaseUrl}/api/move`, {
         source: sourcePath,
         destination: destinationPath
       });
+      
+      console.log("Move response:", response.data);  // Debug
       
       if (response.data.success) {
         setSuccess(`"${sourceName}" nach "${targetPath}" verschoben!`);
