@@ -1,422 +1,714 @@
-# 🐳 Docker Anleitung für den Familienserver
+# 🐳 Docker Anleitung für Familienserver
 
-Diese Anleitung erklärt, wie du den Familienserver mit Docker betreibst. Docker vereinfacht die Installation und den Betrieb, da alle Abhängigkeiten in Containern gekapselt sind.
+> **⚠️ WICHTIG:** Docker ist **nicht** für den Raspberry Pi 3B empfohlen, da dieser nicht genug Ressourcen hat. Diese Anleitung ist für Entwicklungsumgebungen auf leistungsfähigeren Maschinen geeignet.
 
 ---
 
 ## 📋 Voraussetzungen
 
-- [Docker](https://www.docker.com/get-started) (Version 20.10 oder neuer)
-- [Docker Compose](https://docs.docker.com/compose/install/) (normalerweise mit Docker Desktop enthalten)
-- Mindestens **2 GB RAM** für Docker
-- **4 GB freier Festplattenspeicher**
+- Docker (Version 20.10 oder neuer)
+- Docker Compose (Version 2.0 oder neuer)
+- Mindestens 2GB RAM (für Entwicklung)
+- 4GB RAM empfohlen (für Produktionstests)
 
 ---
 
-## 🚀 Schnellstart
+## 🚀 Installation und Start
 
-### 1. Repository klonen und in das Verzeichnis wechseln
+### 1. Docker Image bauen
+
 ```bash
-cd /home/alex/Dokumente/Github/Famielenserver
+# Im Projektverzeichnis
+docker-compose build
 ```
 
-### 2. Docker Container bauen und starten
+### 2. Container starten
+
 ```bash
-docker-compose up -d --build
+# Im Hintergrund starten (daemon mode)
+docker-compose up -d
 ```
 
 ### 3. Status prüfen
+
 ```bash
+# Alle laufenden Container anzeigen
 docker-compose ps
-```
 
-### 4. Im Browser öffnen
-- **Frontend (Next.js):** [http://localhost:3000](http://localhost:3000)
-- **Backend (Flask):** [http://localhost:5000](http://localhost:5000)
-
----
-
-## 📚 Detaillierte Befehle
-
-### Container bauen und starten
-
-| Befehl | Beschreibung |
-|--------|--------------|
-| `docker-compose up -d --build` | Baue Images neu und starte Container im Hintergrund |
-| `docker-compose up -d` | Starte Container mit bestehenden Images |
-| `docker-compose up` | Starte Container im Vordergrund (Logs werden angezeigt) |
-
-**Optionen:**
-- `-d` = Detached Mode (Container laufen im Hintergrund)
-- `--build` = Images neu bauen (notwendig nach Code-Änderungen)
-- `--force-recreate` = Container neu erstellen (auch wenn sie existieren)
-
----
-
-### Container verwalten
-
-| Befehl | Beschreibung |
-|--------|--------------|
-| `docker-compose ps` | Zeige Status aller Container |
-| `docker-compose logs` | Zeige Logs aller Container |
-| `docker-compose logs backend` | Zeige Logs nur vom Backend |
-| `docker-compose logs frontend` | Zeige Logs nur vom Frontend |
-| `docker-compose logs -f` | Folge den Logs in Echtzeit |
-| `docker-compose restart` | Starte alle Container neu |
-| `docker-compose restart backend` | Starte nur das Backend neu |
-| `docker-compose stop` | Stoppe alle Container |
-| `docker-compose down` | Stoppe und entferne alle Container |
-| `docker-compose down -v` | Stoppe, entferne Container **und Volumes** |
-
----
-
-### Container manuell verwalten
-
-| Befehl | Beschreibung |
-|--------|--------------|
-| `docker ps` | Zeige alle laufenden Container |
-| `docker ps -a` | Zeige alle Container (auch gestoppte) |
-| `docker images` | Zeige alle Docker-Images |
-| `docker rm familienserver-backend` | Entferne den Backend-Container |
-| `docker rm familienserver-frontend` | Entferne den Frontend-Container |
-| `docker rmi familienserver-backend` | Entferne das Backend-Image |
-| `docker rmi familienserver-frontend` | Entferne das Frontend-Image |
-| `docker system prune` | Bereinige nicht verwendete Container, Images und Netzwerke |
-
----
-
-## 🏗️ Docker Architektur
-
-### Container Übersicht
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Docker Host                            │
-│                                                           │
-│  ┌──────────────────┐    ┌──────────────────┐            │
-│  │  Backend         │    │  Frontend        │            │
-│  │  (Flask)         │    │  (Next.js)       │            │
-│  │  Port: 5000      │    │  Port: 3000      │            │
-│  │  Container:      │    │  Container:      │            │
-│  │  familienserver- │    │  familienserver- │            │
-│  │  backend         │    │  frontend        │            │
-│  └────────┬─────────┘    └────────┬─────────┘            │
-│           │                         │                         │
-│           └─────────────┬───────────┘                         │
-│                         │                                   │
-│                 Docker Network:                           │
-│                 familienserver-network                   │
-│                         │                                   │
-└─────────────────────────┼───────────────────────────────────┘
-                          │
-                  Host Ports:
-                  3000 → Frontend
-                  5000 → Backend
+# Logs anzeigen (für Debugging)
+docker-compose logs -f
 ```
 
 ---
 
-### Docker Dateien
+## 🎯 Ports und Zugriff
 
-| Datei | Beschreibung |
-|-------|--------------|
-| `Dockerfile.backend` | Build-Anweisungen für das Flask-Backend |
-| `Dockerfile.frontend` | Build-Anweisungen für das Next.js-Frontend |
-| `docker-compose.yml` | Konfiguration für Docker Compose |
-| `.env` | Umgebungsvariablen für Docker |
+| Dienst | Port | Beschreibung |
+|--------|------|--------------|
+| Frontend (Next.js) | 3000 | Webinterface |
+| Backend (Flask) | 5000 | API-Server |
 
----
-
-## 📂 Daten persistent speichern
-
-Die hochgeladenen Dateien werden in einem **Volume** gespeichert, das mit deinem Host-System verbunden ist:
-
-- **Host-Pfad:** `./familienserver/public/uploads/`
-- **Container-Pfad:** `/app/familienserver/public/uploads/`
-
-### Wichtig:
-- Dateien bleiben erhalten, auch wenn Container neu gestartet werden
-- Dateien gehen **verloren**, wenn du das Projekt-Verzeichnis löschst
-- Für Backups: Sichere den Ordner `familienserver/public/uploads/`
+- **Frontend:** `http://localhost:3000`
+- **Backend API:** `http://localhost:5000/api`
 
 ---
 
-## 🔧 Konfiguration anpassen
+## 📁 Docker Konfiguration
+
+### docker-compose.yml
+
+```yaml
+version: '3.8'
+
+services:
+  familienserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"  # Frontend
+      - "5000:5000"  # Backend
+    volumes:
+      # Uploads-Pfad speichern, damit Dateien auch nach Container-Neustart erhalten bleiben
+      - ./familienserver/public/uploads:/app/familienserver/public/uploads
+      # Node modules cachern für schnellere Builds
+      - /app/familienserver/node_modules
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+    restart: unless-stopped
+    # Für Entwicklung: Automatisch neustarten bei Dateiänderungen
+    develop:
+      watch:
+        - path: ./familienserver
+          action: sync
+        - path: ./server.py
+          action: sync
+
+  # Optional: Separater Backend-Container für bessere Trennung
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./familienserver/public/uploads:/app/familienserver/public/uploads
+    environment:
+      - FLASK_ENV=development
+    restart: unless-stopped
+```
+
+---
+
+## 🔧 Dockerfile
+
+### Dockerfile (vollständig, Frontend + Backend)
+
+```dockerfile
+# Stage 1: Frontend bauen
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /app/familienserver
+
+# Abhängigkeiten installieren
+COPY familienserver/package.json familienserver/package-lock.json ./
+RUN npm ci
+
+# Source-Code kopieren
+COPY familienserver ./
+
+# Next.js bauen
+RUN npm run build
+
+# Stage 2: Backend vorbereiten
+FROM python:3.9-slim AS backend-builder
+
+WORKDIR /app
+
+# Python Abhängigkeiten installieren
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Backend-Code kopieren
+COPY server.py ./
+COPY familienserver/public/uploads familienserver/public/uploads
+
+# Stage 3: Final Image
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Python für Backend installieren
+RUN apk add --no-cache python3 py3-pip && pip install flask flask-cors
+
+# Backend-Code und Frontend-Build kopieren
+COPY --from=frontend-builder /app/familienserver/.next ./
+COPY --from=frontend-builder /app/familienserver/public ./public
+COPY --from=frontend-builder /app/familienserver/package.json ./
+COPY --from=frontend-builder /app/familienserver/node_modules ./node_modules
+
+COPY --from=backend-builder /app/server.py ./
+COPY --from=backend-builder /app/requirements.txt ./
+
+# Upload-Ordner erstellen
+RUN mkdir -p familienserver/public/uploads
+
+# Ports freigeben
+EXPOSE 3000 5000
+
+# Startskript
+CMD ["sh", "-c", "python server.py > /dev/null 2>&1 & cd familienserver && npm run start"]
+```
+
+### Dockerfile.backend (nur Backend)
+
+```dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY server.py ./
+
+# Upload-Ordner erstellen
+RUN mkdir -p familienserver/public/uploads
+
+EXPOSE 5000
+
+CMD ["python", "server.py", "--host", "0.0.0.0", "--port", "5000"]
+```
+
+### Dockerfile.frontend (nur Frontend)
+
+```dockerfile
+FROM node:18-alpine
+
+WORKDIR /app/familienserver
+
+COPY familienserver/package.json familienserver/package-lock.json ./
+RUN npm ci
+
+COPY familienserver ./
+
+RUN npm run build
+
+EXPOSE 3000
+
+CMD ["npm", "run", "start"]
+```
+
+---
+
+## 🛠️ Nützliche Docker Befehle
+
+### Container starten
+
+```bash
+# Container im Vordergrund starten (Logs werden angezeigt)
+docker-compose up
+
+# Container im Hintergrund starten
+docker-compose up -d
+
+# Container mit spezifischer Konfiguration starten
+docker-compose -f docker-compose.yml up -d
+```
+
+### Container stoppen
+
+```bash
+# Alle Container anhalten
+docker-compose down
+
+# Container anhalten und Volumes löschen (⚠️ ACHTUNG: Uploads gehen verloren!)
+docker-compose down -v
+
+# Container anhalten und Cache löschen
+docker-compose down --rmi all
+```
+
+### Container und Images komplett entfernen
+
+```bash
+# ⚠️ ACHTUNG: Dies löscht ALLE Docker Container, Images und Volumes!
+docker system prune -a --volumes
+```
+
+### Container-Status prüfen
+
+```bash
+# Alle Container anzeigen (auch gestoppte)
+docker ps -a
+
+# Nur laufende Container anzeigen
+docker ps
+
+# Container-Ressourcen anzeigen
+docker stats
+```
+
+### Logs anzeigen
+
+```bash
+# Logs aller Container anzeigen
+docker-compose logs
+
+# Logs mit automatischem Follow
+docker-compose logs -f
+
+# Logs eines spezifischen Containers
+docker logs familienserver
+
+# Logs mit Follow für spezifischen Container
+docker logs -f familienserver
+```
+
+### In Container eintreten
+
+```bash
+# Shell im laufenden Container öffnen
+docker exec -it familienserver /bin/sh
+
+# Shell im laufenden Container mit Bash öffnen
+docker exec -it familienserver /bin/bash
+```
+
+### Netzwerk prüfen
+
+```bash
+# Docker-Netzwerk anzeigen
+docker network ls
+
+# Netzwerk-Details anzeigen
+docker network inspect familienserver_default
+```
+
+### Volumes verwalten
+
+```bash
+# Volumes anzeigen
+docker volume ls
+
+# Volume-Details anzeigen
+docker volume inspect familienserver_familienserver
+
+# Volume löschen
+docker volume rm familienserver_familienserver
+```
+
+---
+
+## 🔄 Images bauen und aktualisieren
+
+### Image neu bauen
+
+```bash
+# Image neu bauen (ohne Cache)
+docker-compose build --no-cache
+
+# Nur ein spezifisches Image neu bauen
+docker-compose build backend
+```
+
+### Images anzeigen
+
+```bash
+# Alle Images anzeigen
+docker images
+
+# Images filtern
+docker images familienserver*
+```
+
+### Images entfernen
+
+```bash
+# Spezifisches Image entfernen
+docker rmi familienserver_familienserver
+
+# Alle nicht genutzten Images entfernen
+docker image prune
+
+# Alle nicht genutzten Images und Container entfernen
+docker system prune
+```
+
+---
+
+## 📊 Ressourcen begrenzen
+
+Für bessere Performance auf Ressourcen-beschränkten Maschinen:
+
+### docker-compose.yml mit Ressourcenlimits
+
+```yaml
+services:
+  familienserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+      - "5000:5000"
+    volumes:
+      - ./familienserver/public/uploads:/app/familienserver/public/uploads
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'      # Maximal 50% CPU-Nutzung
+          memory: 512M     # Maximal 512MB RAM
+        reservations:
+          cpus: '0.25'     # Garantierte 25% CPU
+          memory: 256M     # Garantierter 256MB RAM
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 2048
+```
+
+---
+
+## 🌐 Netzwerk-Konfiguration
 
 ### Ports ändern
 
-In `docker-compose.yml`:
+```yaml
+services:
+  familienserver:
+    ports:
+      - "8080:3000"  # Frontend auf Port 8080
+      - "8000:5000"  # Backend auf Port 8000
+```
+
+### Netzwerk alias verwenden
+
+```yaml
+services:
+  familienserver:
+    networks:
+      - my_network
+
+  backend:
+    networks:
+      - my_network
+
+networks:
+  my_network:
+    driver: bridge
+```
+
+---
+
+## 🔐 Umgebung Variablen
+
+### .env-Datei für Docker
+
+```bash
+# .env-Datei im Projektverzeichnis erstellen
+NODE_ENV=development
+NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
+UPLOAD_FOLDER=./familienserver/public/uploads
+MAX_FILE_SIZE=500  # MB
+```
+
+---
+
+## ⚡ Performance-Optimierungen
+
+### Build-Cache nutzen
+
+```bash
+# Cache nutzen für schnellere Builds
+docker-compose build
+
+# Cache löschen für sauberen Build
+docker-compose build --no-cache
+```
+
+### Multi-Stage Builds
+
+Die bereitgestellten Dockerfiles nutzen bereits Multi-Stage Builds, um die Image-Größe zu reduzieren.
+
+---
+
+## 🐛 Fehlerbehebung
+
+### Häufige Probleme und Lösungen
+
+#### 1. Port bereits in Verwendung
+
+**Fehler:** `Error: listen EADDRINUSE: address already in use :::3000`
+
+**Lösung:**
+```bash
+# Welcher Prozess blockiert den Port?
+netstat -tulnp | grep 3000
+
+# Prozess beenden
+kill -9 <PID>
+
+# Oder: Andere Ports in docker-compose.yml verwenden
+```
+
+#### 2. Volumes-Berechtigungen
+
+**Fehler:** `Permission denied` beim Zugriff auf Uploads
+
+**Lösung:**
+```bash
+# Berechtigungen für Upload-Ordner setzen
+chmod -R 777 familienserver/public/uploads
+
+# Oder in docker-compose.yml UID/GID setzen
+services:
+  familienserver:
+    user: "1000:1000"  # Anpassen an Benutzer-ID
+```
+
+#### 3. Docker-Speicher voll
+
+**Fehler:** `no space left on device`
+
+**Lösung:**
+```bash
+# Docker-Speicher aufräumen
+docker system prune -a --volumes
+
+# Docker-Speicherlimit erhöhen (Docker Desktop)
+# Einstellungen -> Resources -> Advanced -> Disk image size
+```
+
+#### 4. Images können nicht gebaut werden
+
+**Fehler:** `ERROR: build failed`
+
+**Lösung:**
+```bash
+# Logs anzeigen
+docker-compose build 2>&1 | less
+
+# Dependencies prüfen
+# - Node.js Version prüfen
+# - Python Version prüfen
+# - npm/node_modules löschen und neu installieren
+```
+
+#### 5. Frontend und Backend können nicht kommunizieren
+
+**Fehler:** CORS-Fehler oder Verbindung fehlgeschlagen
+
+**Lösung:**
+```bash
+# In docker-compose.yml CORS-Einstellungen prüfen
+environment:
+  - NEXT_PUBLIC_API_BASE_URL=http://backend:5000
+
+# Netzwerk-Konfiguration prüfen
+# - Beide Container müssen im gleichen Netzwerk sein
+# - Service-Namen können als Hostname verwendet werden
+```
+
+---
+
+## 🧪 Entwicklung mit Hot-Reload
+
+### Für Next.js Hot-Reload
+
+```yaml
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./familienserver:/app/familienserver
+      - /app/familienserver/node_modules
+    command: npm run dev
+    environment:
+      - NODE_ENV=development
+```
+
+### Für Flask Hot-Reload
 
 ```yaml
 services:
   backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
     ports:
-      - "5000:5000"  # Host:Container - hier ändern
+      - "5000:5000"
+    volumes:
+      - ./server.py:/app/server.py
+      - ./familienserver/public/uploads:/app/familienserver/public/uploads
+    command: python server.py --debug
+    environment:
+      - FLASK_ENV=development
+```
+
+---
+
+## 📦 Produktion
+
+### Für Produktion optimierte Konfiguration
+
+```yaml
+version: '3.8'
+
+services:
+  familienserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:3000"    # Frontend auf Port 80
+      - "5000:5000"  # Backend auf Port 5000
+    volumes:
+      - ./familienserver/public/uploads:/app/familienserver/public/uploads
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_BASE_URL=http://<IHRE_DOMAIN>:5000
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+```
+
+### Mit Nginx als Reverse Proxy
+
+```yaml
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./certs:/etc/nginx/certs
+    depends_on:
+      - frontend
+      - backend
+    restart: always
+
   frontend:
-    ports:
-      - "3000:3000"  # Host:Container - hier ändern
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    expose:
+      - "3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_BASE_URL=https://<IHRE_DOMAIN>/api
+    restart: always
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    expose:
+      - "5000"
+    volumes:
+      - ./familienserver/public/uploads:/app/familienserver/public/uploads
+    environment:
+      - FLASK_ENV=production
+    restart: always
 ```
 
-### Umgebungsvariablen
+### nginx.conf
 
-In `.env`:
+```nginx
+upstream frontend {
+    server frontend:3000;
+}
 
-```env
-# Backend
-FLASK_HOST=0.0.0.0
-FLASK_PORT=5000
+upstream backend {
+    server backend:5000;
+}
 
-# Frontend
-NODE_ENV=production
-NEXT_PUBLIC_API_BASE_URL=http://backend:5000
+server {
+    listen 80;
+    server_name <IHRE_DOMAIN>;
+
+    location / {
+        proxy_pass http://frontend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location /api {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
 ```
-
-**Wichtig:** Im Docker-Netzwerk ist der Backend-Service unter dem Namen `backend` erreichbar. Die Frontend-Container verwenden diese URL, um mit dem Backend zu kommunizieren.
 
 ---
 
-## 🌐 Netzwerk-Konfiguration für Heimnetzwerk
+## 💡 Tipps und Tricks
 
-### Auf anderen Geräten im Netzwerk zugreifen
-
-1. **IP-Adresse deines Servers herausfinden:**
-   ```bash
-   hostname -I  # Linux
-   ipconfig     # Windows
-   ```
-
-2. **Auf anderen Geräten im Browser öffnen:**
-   - Frontend: `http://DEINE_IP:3000`
-   - Backend: `http://DEINE_IP:5000`
-
-3. **Firewall öffnen:**
-   ```bash
-   # Ubuntu/Debian
-   sudo ufw allow 3000/tcp
-   sudo ufw allow 5000/tcp
-   ```
-
----
-
-## 🔄 Container aktualisieren
-
-Nach Code-Änderungen:
+### Docker-Container exportieren
 
 ```bash
-# 1. Container stoppen
-docker-compose down
+# Container als Tar-Archiv exportieren
+docker export familienserver > familienserver.tar
 
-# 2. Images neu bauen und Container starten
-docker-compose up -d --build
+# Container aus Tar-Archiv importieren
+docker import familienserver.tar familienserver:latest
 ```
 
----
-
-## ⚠️ Fehlerbehebung
-
-### Problem: Port bereits belegt
-
-**Fehlermeldung:**
-```
-Error: listen EADDRINUSE: address already in use :::5000
-```
-
-**Lösung:**
-```bash
-# 1. Prüfe, welcher Prozess den Port blockiert
-sudo lsof -i :5000
-
-# 2. Prozess beenden (wenn es ein alter Container ist)
-docker-compose down
-
-# 3. Container neu starten
-docker-compose up -d --build
-```
-
-### Problem: Container startet nicht
-
-**Fehlermeldung:**
-```
-familienserver-backend | ModuleNotFoundError: No module named 'flask'
-```
-
-**Lösung:**
-```bash
-# Images neu bauen
-docker-compose build --no-cache
-
-# Container starten
-docker-compose up -d
-```
-
-### Problem: Frontend zeigt "Keine Verbindung zum Server"
-
-**Lösung:**
-1. Prüfe, ob beide Container laufen:
-   ```bash
-   docker-compose ps
-   ```
-
-2. Prüfe die Logs:
-   ```bash
-   docker-compose logs frontend
-   docker-compose logs backend
-   ```
-
-3. Starte beide Container neu:
-   ```bash
-   docker-compose restart
-   ```
-
-### Problem: Uploads funktionieren nicht
-
-**Lösung:**
-1. Prüfe, ob der Upload-Ordner existiert:
-   ```bash
-   mkdir -p familienserver/public/uploads
-   ```
-
-2. Prüfe die Berechtigungen:
-   ```bash
-   chmod -R 777 familienserver/public/uploads
-   ```
-
----
-
-## 🧹 Aufräumen
-
-### Nicht mehr benötigte Container und Images entfernen
+### Images speichern und laden
 
 ```bash
-# Alle gestoppten Container entfernen
-docker container prune
+# Image speichern
+docker save familienserver:latest > familienserver-image.tar
 
-# Nicht verwendete Images entfernen
-docker image prune
-
-# Alles bereinigen (Container, Images, Netzwerke, Volumes)
-docker system prune -a --volumes
+# Image laden
+docker load < familienserver-image.tar
 ```
 
-**Achtung:** `docker system prune -a --volumes` entfernt **alle** nicht verwendeten Ressourcen, inklusive deiner hochgeladenen Dateien!
-
----
-
-## 📊 Docker Ressourcen überwachen
+### Container als Service starten (Docker Swarm)
 
 ```bash
-# Container-Ressourcen anzeigen
-docker stats
+# Docker Swarm initialisieren
+docker swarm init
 
-# Docker Disk Usage anzeigen
-docker system df
-
-# Detaillierte Informationen zu einem Container
-docker inspect familienserver-backend
+# Service erstellen
+docker service create --name familienserver --publish published=3000,target=3000 familienserver:latest
 ```
 
 ---
 
-## 🔐 Sicherheitstipps
+## 📝 Changelog
 
-1. **Docker nicht als Root ausführen**
-2. **Ports nicht unnötig freigeben** (nur 3000 und 5000 sind notwendig)
-3. **Regelmäßig Updates durchführen:**
-   ```bash
-   docker-compose pull
-   docker-compose up -d --build
-   ```
-4. **Backups erstellen:**
-   ```bash
-   # Upload-Ordner sichern
-   tar -czvf familienserver_backup_$(date +%Y%m%d).tar.gz familienserver/public/uploads/
-   ```
+| Version | Datum | Änderungen |
+|---------|-------|------------|
+| 1.0.0 | 2024-01-00 | Initialversion |
 
 ---
 
-## 📖 Nützliche Docker-Befehle
+## 🤝 Mitwirken
 
-| Aufgabe | Befehl |
-|---------|--------|
-| Alle Container stoppen | `docker stop $(docker ps -aq)` |
-| Alle Container entfernen | `docker rm $(docker ps -aq)` |
-| Alle Images entfernen | `docker rmi $(docker images -q)` |
-| Docker neu starten | `sudo systemctl restart docker` |
-| Docker-Status prüfen | `sudo systemctl status docker` |
+Beiträge zu dieser Docker-Konfiguration sind willkommen! Bitte erstellen Sie einen Pull Request mit Ihren Verbesserungen.
 
 ---
 
-## 🎯 Zusammenfassung der wichtigsten Befehle
+## 📜 Lizenz
 
-```bash
-# ✅ Starten
-cd /home/alex/Dokumente/Github/Famielenserver
-docker-compose up -d --build
-
-# 📊 Status prüfen
-docker-compose ps
-
-# 📝 Logs anzeigen
-docker-compose logs -f
-
-# 🔄 Neu starten
-docker-compose restart
-
-# ❌ Stoppen
-docker-compose down
-
-# 🧹 Aufräumen (nur Container, nicht die Dateien!)
-docker-compose down -v
-```
-
----
-
-## 💡 Tipps für die Entwicklung
-
-### Frontend hot-reload aktivieren
-Für die Entwicklung kannst du das Frontend mit hot-reload starten:
-
-```bash
-# Backend normal mit Docker
-docker-compose up -d backend
-
-# Frontend lokal mit hot-reload
-cd familienserver
-npm run dev
-```
-
-### Backend lokal debuggen
-```bash
-# Frontend mit Docker
-docker-compose up -d frontend
-
-# Backend lokal
-source venv/bin/activate
-python3 server.py --port 5001
-```
-
----
-
-## 📞 Support
-
-Bei Problemen:
-
-1. **Logs prüfen:**
-   ```bash
-   docker-compose logs
-   ```
-
-2. **Container-Status prüfen:**
-   ```bash
-   docker-compose ps
-   ```
-
-3. **Docker-Version prüfen:**
-   ```bash
-   docker --version
-docker-compose --version
-   ```
-
----
-
-**Viel Erfolg mit deinem Familienserver!** 🎉
+Diese Docker-Konfiguration ist Teil des Familienserver-Projekts und unterliegt der gleichen Lizenz.

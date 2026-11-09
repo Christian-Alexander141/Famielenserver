@@ -6,6 +6,7 @@ import platform
 import time
 import zipfile
 import io
+import traceback
 from pathlib import Path
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
@@ -30,16 +31,37 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() or True  # Immer true = alle Dateien erlaubt
 
 
-def sanitize_path(path):
+def sanitize_path(path_str):
     """Sicherstellen, dass der Pfad innerhalb des Upload-Ordners bleibt"""
+    # Normalisiere den Pfad (entferne ./ und ../)
+    path_str = path_str.replace('\\', '/')  # Windows-Pfade umwandeln
+    
+    # Entferne führende Slashes
+    if path_str.startswith('/'):
+        path_str = path_str[1:]
+    
+    # Zerlege in Komponenten und filtere .. aus
+    parts = [p for p in path_str.split('/') if p and p != '.']
+    
+    # Baue sicheren Pfad auf
+    safe_path = '/'.join(parts)
+    
     base = Path(app.config['UPLOAD_FOLDER']).resolve()
-    target = (base / Path(path)).resolve()
+    target = (base / safe_path).resolve()
     
     # Prüfe, ob der Zielpfad innerhalb des Basis-Pfades liegt
     if not str(target).startswith(str(base)):
-        raise ValueError(f"Pfad außerhalb des Upload-Ordners: {path}")
+        raise ValueError(f"Pfad außerhalb des Upload-Ordners: {path_str}")
     
     return target
+
+
+def get_path_relative_to_upload(path_str):
+    """Get the relative path from upload folder"""
+    path_str = path_str.replace('\\', '/')
+    if path_str.startswith('/'):
+        path_str = path_str[1:]
+    return path_str
 
 
 # System Monitoring Funktionen - optimiert für Raspberry Pi
@@ -300,19 +322,33 @@ def download_zip(path):
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/mkdir/<path:path>', methods=['POST'])
-def create_directory(path):
-    """Create a new directory"""
+@app.route('/api/mkdir', methods=['POST'])
+def create_directory():
+    """Create a new directory - accepts JSON body with 'path' field"""
     try:
+        data = request.get_json()
+        if not data or 'path' not in data:
+            return jsonify({'error': 'Pfad ist erforderlich'}), 400
+        
+        path_str = data['path']
+        
         base_path = Path(app.config['UPLOAD_FOLDER'])
-        new_dir = sanitize_path(path)
+        new_dir = sanitize_path(path_str)
         
         if new_dir.exists():
-            return jsonify({'error': 'Ordner existiert bereits'}), 400
+            return jsonify({'error': f'Ordner oder Datei existiert bereits: {path_str}'}), 400
         
         new_dir.mkdir(parents=True, exist_ok=True)
-        return jsonify({'success': True, 'path': str(new_dir.relative_to(base_path))})
+        rel_path = new_dir.relative_to(base_path)
+        
+        return jsonify({
+            'success': True, 
+            'path': str(rel_path),
+            'message': f'Ordner erstellt: {path_str}'
+        })
     except Exception as e:
+        print(f"Mkdir error: {e}")
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
@@ -332,7 +368,7 @@ def move_item():
         dest_path = sanitize_path(destination)
         
         if not source_path.exists():
-            return jsonify({'error': 'Quellpfad nicht gefunden'}), 404
+            return jsonify({'error': f'Quellpfad nicht gefunden: {source}'}), 404
         
         # If destination is a directory, move into it
         if dest_path.is_dir():
@@ -340,7 +376,7 @@ def move_item():
         
         # Check if destination already exists
         if dest_path.exists():
-            return jsonify({'error': 'Ziel existiert bereits'}), 400
+            return jsonify({'error': f'Ziel existiert bereits: {destination}'}), 400
         
         # Move the item
         shutil.move(str(source_path), str(dest_path))
@@ -348,9 +384,12 @@ def move_item():
         return jsonify({
             'success': True,
             'source': source,
-            'destination': str(dest_path.relative_to(base_path))
+            'destination': str(dest_path.relative_to(base_path)),
+            'message': f'Erfolgreich verschoben von {source} nach {destination}'
         })
     except Exception as e:
+        print(f"Move error: {e}")
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
@@ -362,18 +401,25 @@ def delete_item(path):
         item_path = sanitize_path(path)
         
         if not item_path.exists():
-            return jsonify({'error': 'Pfad nicht gefunden'}), 404
+            return jsonify({'error': f'Pfad nicht gefunden: {path}'}), 404
         
         if item_path.is_dir():
             shutil.rmtree(str(item_path))
         else:
             item_path.unlink()
         
-        return jsonify({'success': True, 'path': path})
+        return jsonify({
+            'success': True, 
+            'path': path,
+            'message': f'Erfolgreich gelöscht: {path}'
+        })
     except Exception as e:
+        print(f"Delete error: {e}")
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
+# Chatbot API - Regelbasiert (kein LLM, komplett lokal)
 @app.route('/api/chat', methods=['POST'])
 def chat():
     """

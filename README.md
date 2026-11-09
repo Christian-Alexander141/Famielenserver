@@ -523,6 +523,18 @@ sudo /etc/init.d/dphys-swapfile restart
 
 ---
 
+## 🐳 **Docker-Installation (optional)**
+
+Für die Entwicklung auf leistungsfähigen Maschinen:
+
+- [📖 **Docker-Anleitung (DOCKER.md)**](DOCKER.md)
+- [🍓 **Raspberry Pi Anleitung (RASPBERRY_PI.md)**](RASPBERRY_PI.md)
+- [📋 **Anleitung ohne Docker (ohne_docker.md)**](ohne_docker.md)
+
+> **⚠️ WICHTIG:** Docker wird **Nicht empfohlen** für Raspberry Pi 3B!
+
+---
+
 ## 🎉 **Screenshots selbst erstellen**
 
 Falls du **echte Screenshots** hinzufügen möchtest:

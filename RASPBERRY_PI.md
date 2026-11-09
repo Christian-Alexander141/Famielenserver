@@ -1,217 +1,183 @@
-# 🍓 Familienserver auf Raspberry Pi 3B+ installieren
+# 🍓 Raspberry Pi 3B Anleitung für Familienserver
 
-Diese Anleitung erklärt, wie du den Familienserver auf einem **Raspberry Pi 3B/3B+** installierst und betreibst. 
-Docker wird **nicht verwendet**, da es zu ressourcenintensiv für den Pi ist.
-
----
-
-## 📋 Voraussetzungen
-
-### Hardware
-- Raspberry Pi 3B oder 3B+ (empfohlen)
-- MicroSD-Karte (mindestens **16GB**, besser 32GB)
-- Stromversorgung (5V/2.5A)
-- Netzwerkverbindung (LAN oder WLAN)
-
-### Software
-- **Raspberry Pi OS** (32-bit) Lite oder Desktop
-- **Python 3.7+** (vorinstalliert auf Raspberry Pi OS)
-- **Node.js 18+** (muss manuell installiert werden)
+> **⚠️ WICHTIG:** Docker wird **Nicht empfohlen** für den Raspberry Pi 3B, da dieser nicht genug Ressourcen hat. Diese Anleitung zeigt die **direkte Installation ohne Docker**.
 
 ---
 
-## 🚀 Schritt-für-Schritt Installation
+## 📋 **Systemanforderungen**
 
-### Schritt 1: Raspberry Pi OS installieren
+| Komponent | Anforderung | Empfehlung |
+|-----------|-------------|------------|
+| **Raspberry Pi** | 3B, 3B+, 4 oder neuer | Raspberry Pi 4 (4GB RAM) |
+| **Betriebssystem** | Raspberry Pi OS (32-bit oder 64-bit) | Raspberry Pi OS Lite |
+| **Speicherkarte** | Mindestens 8GB | 16GB oder mehr |
+| **Speicherplatz** | Mindestens 2GB frei | 4GB+ für Uploads |
+| **Netzwerk** | LAN oder WiFi | LAN für bessere Performance |
 
-1. **SD-Karte vorbereiten:**
-   - Lade [Raspberry Pi Imager](https://www.raspberrypi.com/software/) herunter
-   - Wähle **Raspberry Pi OS Lite (32-bit)** oder **Raspberry Pi OS Desktop (32-bit)**
-   - Schreibe das Image auf die SD-Karte
+---
 
-2. **Erstes Booten:**
-   - Setze die SD-Karte in den Pi ein
-   - Verbinde Monitor, Tastatur, Maus und Netzwerk
-   - Boote den Pi
+## 🚀 **Schnellstart (empfohlen)**
 
-3. **Grundkonfiguration:**
+### 1. Raspberry Pi OS installieren
+
+1. **Raspberry Pi OS Lite** herunterladen:
    ```bash
-   sudo raspi-config
+   # Auf deinem Computer (nicht auf dem Pi)
+   wget https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2024-03-15/2024-03-15-raspios-bookworm-armhf-lite.img.xz
    ```
-   - Passwort ändern
-   - Hostname setzen (z.B. `familienserver`)
-   - WLAN konfigurieren (falls nötig)
-   - Locale und Zeitzone einstellen
-   - **Memory Split:** GPU-Speicher auf **16MB** reduzieren (mehr RAM für Anwendungen)
-   - **Neustart**
+
+2. **SD-Karte schreiben** (mit Raspberry Pi Imager oder `dd`):
+   ```bash
+   # Auf deinem Computer
+   sudo dd if=2024-03-15-raspios-bookworm-armhf-lite.img.xz of=/dev/sdX bs=4M status=progress
+   ```
+
+3. **SD-Karte einlegen und Pi starten**
 
 ---
 
-### Schritt 2: System aktualisieren
+### 2. System aktualisieren
 
 ```bash
-# Paketlisten aktualisieren
+# Nach dem ersten Start auf dem Raspberry Pi
 sudo apt update && sudo apt upgrade -y
-
-# Notwendige Pakete installieren
-sudo apt install -y git curl build-essential python3-dev python3-venv
+sudo apt autoremove -y
 ```
 
 ---
 
-### Schritt 3: Node.js installieren
-
-**Wichtig:** Node.js 18+ ist erforderlich für Next.js. Die Standard-Paketquellen von Raspberry Pi haben oft veraltete Versionen.
-
-#### Methode 1: NodeSource (empfohlen)
+### 3. Abhängigkeiten installieren
 
 ```bash
-# NodeSource Repository hinzufügen
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-
-# Node.js installieren
+# Node.js 18+ installieren (für Next.js)
+# Die offizielle Node.js Version für Raspberry Pi
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt install -y nodejs
 
-# Überprüfen
-node --version  # Sollte >= 18 sein
-npm --version   # Sollte >= 9 sein
-```
+# Python 3.8+ installieren (für Flask)
+# Auf Raspberry Pi OS ist Python 3 bereits installiert
+# Falls nötig, aktualisieren:
+sudo apt install -y python3 python3-pip python3-venv
 
-#### Methode 2: Manuell (falls NodeSource nicht funktioniert)
+# Git installieren (für Updates)
+sudo apt install -y git
 
-```bash
-# ARMv7 Build herunterladen
-wget https://nodejs.org/dist/v20.12.2/node-v20.12.2-linux-armv7l.tar.xz
-
-# Entpacken
-sudo mkdir -p /usr/local/lib/nodejs
-sudo tar -xJvf node-v20.12.2-linux-armv7l.tar.xz -C /usr/local/lib/nodejs
-
-# Symlinks erstellen
-sudo ln -s /usr/local/lib/nodejs/node-v20.12.2-linux-armv7l/bin/node /usr/local/bin/node
-sudo ln -s /usr/local/lib/nodejs/node-v20.12.2-linux-armv7l/bin/npm /usr/local/bin/npm
-
-# Überprüfen
-node --version
-npm --version
+# System-Tools für Monitoring
+sudo apt install -y htop psmisc procps
 ```
 
 ---
 
-### Schritt 4: Projekt klonen
+### 4. Familienserver installieren
+
+#### **Option A: Klonen aus GitHub**
 
 ```bash
-cd ~
-git clone https://github.com/dein-benutzername/Famielenserver.git
+# In dein Home-Verzeichnis
+git clone https://github.com/<DEIN_BENUTZERNAME>/Famielenserver.git
 cd Famielenserver
 ```
 
+#### **Option B: Manuell kopieren**
+
+1. Kopiere alle Projektdateien auf den Raspberry Pi:
+   ```bash
+   # Auf deinem Computer
+   scp -r /home/alex/Dokumente/Github/Famielenserver pi@<PI_IP>:/home/pi/
+   ```
+
+2. Auf dem Raspberry Pi:
+   ```bash
+   cd /home/pi/Famielenserver
+   ```
+
 ---
 
-### Schritt 5: Backend (Flask) einrichten
+### 5. Backend (Flask) einrichten
 
 ```bash
 # Virtuelle Python-Umgebung erstellen
 python3 -m venv venv
 
-# Virtuelle Umgebung aktivieren
+# Umgebung aktivieren
 source venv/bin/activate
 
 # Abhängigkeiten installieren
 pip install -r requirements.txt
-
-# Testen, ob Backend startet
-python3 server.py &
-
-# Backend testen (in neuem Terminal)
-curl http://localhost:5000/api/systeminfo
-
-# Backend stoppen (STRG + C oder)
-pkill -f "python3 server.py"
 ```
 
 ---
 
-### Schritt 6: Frontend (Next.js) einrichten
+### 6. Frontend (Next.js) einrichten
 
 ```bash
+# In das Frontend-Verzeichnis wechseln
 cd familienserver
 
 # Abhängigkeiten installieren
 npm install
 
-# Test-Build
-npm run build
-
-# Development Modus testen
-npm run dev
+# Zurück zum Hauptverzeichnis
+cd ..
 ```
-
-**Hinweis:** Der Build-Prozess kann auf dem Pi 3B **10-15 Minuten** dauern. Sei geduldig!
 
 ---
 
-### Schritt 7: Production Setup
+### 7. Familienserver starten
 
-Für den Dauerbetrieb empfehle ich den **Production Modus**:
+#### **Option A: Mit start.sh Skript**
 
 ```bash
-# Backend im Hintergrund starten
-cd ~
+# Skript ausführbar machen
+chmod +x start.sh
+
+# Skript ausführen
+./start.sh
+```
+
+**Wähle dann Option 3:** "Beide starten (Backend + Frontend)"
+
+#### **Option B: Manuell starten**
+
+**Terminal 1 (Backend):**
+```bash
+# In einem Terminal
 source venv/bin/activate
-nohup python3 server.py --host 0.0.0.0 --port 5000 > backend.log 2>&1 &
+python3 server.py --host 0.0.0.0 --port 5000
+```
 
-# Frontend im Hintergrund starten
+**Terminal 2 (Frontend):**
+```bash
+# In einem zweiten Terminal
 cd familienserver
-nohup npm run start -- --port 3000 > frontend.log 2>&1 &
+npm run start
 ```
 
 ---
 
-## 🔧 Systemauslastung für Raspberry Pi
+## 🌐 **Zugriff auf den Server**
 
-Der Familienserver ist bereits für Raspberry Pi optimiert:
+| Dienst | Port | URL |
+|--------|------|-----|
+| Frontend | 3000 | `http://<PI_IP>:3000` |
+| Backend API | 5000 | `http://<PI_IP>:5000` |
 
-### CPU-Auslastung
-- Liest `/proc/stat` (funktioniert auf allen Linux-Systemen)
-- Berechnet die Auslastung über zwei Messungen im Abstand von 100ms
-- Optimiert für ARM-Prozessoren
-
-### RAM-Auslastung
-- Liest `/proc/meminfo`
-- Berücksichtigt **Buffers** und **Cached** Memory
-- Zeigt den tatsächlichen Speicherverbrauch an
-
-### Festplatten-Auslastung
-- Nutzt `shutil.disk_usage('/')`
-- Funktioniert mit allen Dateisystemen
-
----
-
-## 🌐 Netzwerk-Konfiguration
-
-### Statische IP-Adresse setzen (empfohlen)
+### **IP-Adresse des Raspberry Pi finden**
 
 ```bash
-sudo nano /etc/dhcpcd.conf
+# Auf dem Raspberry Pi
+hostname -I
+
+# Oder
+ip a
 ```
 
-Füge am Ende hinzu (passe die Werte an dein Netzwerk an):
-```
-interface eth0
-static ip_address=192.168.1.100/24
-static routers=192.168.1.1
-static domain_name_servers=192.168.1.1 8.8.8.8
-```
+### **Firewall konfigurieren**
 
-Dann:
-```bash
-sudo service dhcpcd restart
-```
-
-### Firewall öffnen (falls aktiviert)
+Falls die Firewall aktiviert ist:
 
 ```bash
+# Port 3000 und 5000 freigeben
 sudo ufw allow 3000/tcp
 sudo ufw allow 5000/tcp
 sudo ufw enable
@@ -219,329 +185,574 @@ sudo ufw enable
 
 ---
 
-## 📂 Upload-Ordner einrichten
-
-```bash
-# Upload-Ordner erstellen (falls nicht existiert)
-mkdir -p ~/Famielenserver/familienserver/public/uploads
-
-# Berechtigungen setzen
-chmod -R 777 ~/Famielenserver/familienserver/public/uploads
-```
-
-### Externen Speicher nutzen (USB-Stick/Festplatte)
-
-1. USB-Laufwerk anschließen
-2. Mount-Punkt erstellen:
-   ```bash
-   sudo mkdir -p /mnt/familienserver
-   ```
-3. Laufwerk mounten (automatisch oder manuell):
-   ```bash
-   sudo mount /dev/sda1 /mnt/familienserver
-   ```
-4. In `server.py` den Upload-Pfad anpassen:
-   ```python
-   UPLOAD_FOLDER = Path('/mnt/familienserver')
-   ```
-5. Berechtigungen setzen:
-   ```bash
-   sudo chmod -R 777 /mnt/familienserver
-   ```
-
----
-
-## 🤖 Chatbot (regelbasiert)
-
-Der Chatbot funktioniert **regelbasiert** ohne externe KI-Modelle:
-
-- **Funktionsweise:** Durchsucht Dateinamen nach Suchbegriffen
-- **Keine Abhängigkeiten:** Läuft komplett lokal
-- **Schnell:** Keine API-Aufrufe an externe Dienste
-- **Datenschutz:** Alle Daten bleiben auf deinem Pi
-
-### Beispiel-Suchen:
-- "Suche nach Urlaub" → Finde alle Dateien mit "urlaub" im Namen
-- "Zeige PDFs" → Finde alle PDF-Dateien
-- "Finde Rechnungen" → Finde alle Dateien mit "rechnung" im Namen
-
----
-
-## 📊 Performance-Optimierungen für Raspberry Pi 3B
-
-### 1. Swap-Speicher erhöhen
-
-```bash
-sudo nano /etc/dphys-swapfile
-```
-
-Ändere zu:
-```
-CONF_SWAPSIZE=2048
-```
-
-Dann:
-```bash
-sudo /etc/init.d/dphys-swapfile restart
-```
-
-### 2. ZRAM aktivieren (optional)
-
-```bash
-sudo apt install -y zram-config
-sudo systemctl restart zram-config
-```
-
-### 3. Unnötige Dienste deaktivieren
-
-```bash
-# Bluetooth deaktivieren (falls nicht benötigt)
-sudo systemctl disable bluetooth
-sudo systemctl stop bluetooth
-
-# HDMI deaktivieren (falls headless betrieben)
-sudo /opt/vc/bin/tvservice -o
-```
-
-### 4. GPU-Speicher reduzieren
-
-```bash
-sudo raspi-config
-```
-- **Advanced Options** → **Memory Split** → **16MB**
-
----
-
-## ⚡ Autostart-Konfiguration
+## 🔧 **Autostart konfigurieren**
 
 Damit der Server nach einem Neustart automatisch startet:
 
-### Methode 1: systemd-Service (empfohlen)
+### **Option A: Mit systemd (empfohlen)**
 
-Erstelle eine Service-Datei:
+1. **Backend-Service erstellen:**
+
 ```bash
-sudo nano /etc/systemd/system/familienserver.service
+# /etc/systemd/system/familienserver-backend.service
+sudo nano /etc/systemd/system/familienserver-backend.service
 ```
 
-Füge folgenden Inhalt ein:
 ```ini
 [Unit]
-Description=Familienserver
+Description=Familienserver Backend (Flask)
 After=network.target
 
 [Service]
 User=pi
 WorkingDirectory=/home/pi/Famielenserver
 Environment="PATH=/home/pi/Famielenserver/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-ExecStart=/home/pi/Famielenserver/start_pi.sh
+ExecStart=/home/pi/Famielenserver/venv/bin/python /home/pi/Famielenserver/server.py --host 0.0.0.0 --port 5000
 Restart=always
-RestartSec=10
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-Erstelle das Startskript:
+2. **Frontend-Service erstellen:**
+
 ```bash
-nano ~/Famielenserver/start_pi.sh
+sudo nano /etc/systemd/system/familienserver-frontend.service
 ```
 
-Inhalt:
-```bash
-#!/bin/bash
+```ini
+[Unit]
+Description=Familienserver Frontend (Next.js)
+After=network.target familienserver-backend.service
 
-cd /home/pi/Famielenserver
+[Service]
+User=pi
+WorkingDirectory=/home/pi/Famielenserver/familienserver
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/usr/bin/npx serve -s /home/pi/Famielenserver/familienserver/.next -p 3000
+Restart=always
+RestartSec=5
 
-# Backend starten
-source venv/bin/activate
-python3 server.py --host 0.0.0.0 --port 5000 &
-BACKEND_PID=$!
-
-# Warten bis Backend gestartet ist
-sleep 5
-
-# Frontend starten
-cd familienserver
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000 npm run start -- --port 3000 &
-
-# Warten und PID speichern
-sleep 3
-wait
+[Install]
+WantedBy=multi-user.target
 ```
 
-Skript ausführbar machen:
+> **Hinweis:** Für das Frontend wird `serve` benötigt. Falls nicht installiert:
+> ```bash
+> sudo npm install -g serve
+> ```
+
+3. **Next.js Build vor dem Start erstellen:**
+
 ```bash
-chmod +x ~/Famielenserver/start_pi.sh
+cd /home/pi/Famielenserver/familienserver
+npm run build
+cd ..
 ```
 
-Service aktivieren:
+4. **Services aktivieren und starten:**
+
 ```bash
+# Services laden
 sudo systemctl daemon-reload
-sudo systemctl enable familienserver.service
-sudo systemctl start familienserver.service
-```
 
-### Methode 2: rc.local (einfacher)
+# Services aktivieren (Autostart)
+sudo systemctl enable familienserver-backend.service
+sudo systemctl enable familienserver-frontend.service
 
-```bash
-sudo nano /etc/rc.local
-```
+# Services starten
+sudo systemctl start familienserver-backend.service
+sudo systemctl start familienserver-frontend.service
 
-Füge vor `exit 0` ein:
-```bash
-cd /home/pi/Famielenserver
-source venv/bin/activate
-python3 server.py --host 0.0.0.0 --port 5000 &
-sleep 5
-cd familienserver
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000 nohup npm run start -- --port 3000 > /dev/null 2>&1 &
+# Status prüfen
+sudo systemctl status familienserver-backend.service
+sudo systemctl status familienserver-frontend.service
 ```
 
 ---
 
-## 🔄 Updates durchführen
+### **Option B: Mit rc.local (einfacher)**
 
-### Projekt aktualisieren
 ```bash
-cd ~/Famielenserver
-git pull
+# rc.local bearbeiten
+sudo nano /etc/rc.local
+```
 
-# Backend-Aktualisierung
+Füge **vor** `exit 0` ein:
+
+```bash
+# Familienserver Backend starten
+su pi -c "cd /home/pi/Famielenserver && source venv/bin/activate && python server.py --host 0.0.0.0 --port 5000 &"
+
+# Warten bis Backend gestartet ist
+sleep 5
+
+# Familienserver Frontend starten
+su pi -c "cd /home/pi/Famielenserver/familienserver && /usr/bin/npx serve -s .next -p 3000 &"
+
+# Datei ausführbar machen
+chmod +x /etc/rc.local
+```
+
+---
+
+## ⚡ **Performance-Optimierungen für Raspberry Pi 3B**
+
+### 1. **Maximale Dateigröße reduzieren**
+
+In `server.py`:
+
+```python
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB statt 1GB
+```
+
+### 2. **Swappiness erhöhen**
+
+```bash
+# Swappiness auf 60 setzen (standardmäßig 60, kann auf 10 reduziert werden)
+sudo sysctl vm.swappiness=10
+
+# Permanent machen
+sudo nano /etc/sysctl.conf
+# vm.swappiness=10 hinzufügen
+```
+
+### 3. **Swap-Datei erweitern**
+
+```bash
+# Aktuelle Swap-Datei deaktivieren
+sudo dphys-swapfile swapoff
+
+# Swap-Datei konfigurieren (auf 2GB erhöhen)
+sudo nano /etc/dphys-swapfile
+# CONF_SWAPSIZE=2048 setzen
+
+# Swap-Datei neu aktivieren
+sudo dphys-swapfile setup
+sudo dphys-swapfile swapon
+```
+
+### 4. **Node.js Memory-Limit anpassen**
+
+```bash
+# In familienserver/package.json
+# "scripts" ändern:
+# "start": "NODE_OPTIONS=--max-old-space-size=512 next start"
+```
+
+### 5. **Flask Threads begrenzen**
+
+In `server.py`:
+
+```python
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+```
+
+---
+
+## 📊 **System-Monitoring auf dem Raspberry Pi**
+
+### **CPU-Temperatur prüfen**
+
+```bash
+# Aktuelle Temperatur
+vcgencmd measure_temp
+
+# Oder
+cat /sys/class/thermal/thermal_zone0/temp
+```
+
+### **Systemauslastung prüfen**
+
+```bash
+# Echtzeit-Ansicht (Strg+C zum Beenden)
+htop
+
+# Oder
+watch -n 1 "vcgencmd get_throttled; vcgencmd measure_temp; free -h; df -h"
+```
+
+### **Log-Dateien prüfen**
+
+```bash
+# Backend-Logs
+journalctl -u familienserver-backend.service -f
+
+# Frontend-Logs
+journalctl -u familienserver-frontend.service -f
+```
+
+---
+
+## 🔌 **Netzwerk-Konfiguration**
+
+### **Statische IP-Adresse setzen (empfohlen)**
+
+```bash
+# dhcpcd.conf bearbeiten
+sudo nano /etc/dhcpcd.conf
+```
+
+Füge am Ende hinzu:
+
+```ini
+# Statische IP für Ethernet
+interface eth0
+static ip_address=192.168.1.100/24
+static routers=192.168.1.1
+static domain_name_servers=192.168.1.1 8.8.8.8
+
+# Oder für WiFi
+interface wlan0
+static ip_address=192.168.1.100/24
+static routers=192.168.1.1
+static domain_name_servers=192.168.1.1 8.8.8.8
+```
+
+### **DNS-Konfiguration**
+
+```bash
+# Resolv.conf bearbeiten
+sudo nano /etc/resolv.conf
+```
+
+Füge hinzu:
+
+```
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+```
+
+---
+
+## 🛡️ **Sicherheit**
+
+### **1. Standard-Passwort ändern**
+
+```bash
+passwd pi
+```
+
+### **2. SSH sichern**
+
+```bash
+# SSH-Konfiguration bearbeiten
+sudo nano /etc/ssh/sshd_config
+```
+
+Ändere oder füge hinzu:
+
+```ini
+Port 2222                   # Standard-Port ändern
+PermitRootLogin no          # Root-Login verbieten
+PasswordAuthentication no   # Nur Key-basierte Authentifizierung
+```
+
+### **3. Fail2Ban installieren**
+
+```bash
+sudo apt install -y fail2ban
+sudo systemctl enable fail2ban
+sudo systemctl start fail2ban
+```
+
+### **4. Firewall (ufw) aktivieren**
+
+```bash
+# Nur notwendige Ports freigeben
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 2222/tcp       # SSH
+sudo ufw allow 3000/tcp       # Frontend
+sudo ufw allow 5000/tcp       # Backend
+sudo ufw enable
+```
+
+### **5. Upload-Ordner sichern**
+
+```bash
+# Upload-Ordner erstellen (falls noch nicht vorhanden)
+mkdir -p /home/pi/Famielenserver/familienserver/public/uploads
+
+# Berechtigungen setzen
+chown -R pi:pi /home/pi/Famielenserver
+chmod -R 750 /home/pi/Famielenserver
+```
+
+---
+
+## 🗃️ **Speicherverwaltung**
+
+### **1. Externe Festplatte mounten**
+
+```bash
+# USB-Festplatte anschließen
+lsblk
+
+# Partition formatieren (falls nötig)
+sudo mkfs.ext4 /dev/sda1
+
+# Mount-Punkt erstellen
+sudo mkdir /mnt/uploads
+
+# Festplatte mounten
+sudo mount /dev/sda1 /mnt/uploads
+
+# Automatisch mounten bei Start
+sudo nano /etc/fstab
+```
+
+Füge hinzu:
+
+```
+/dev/sda1 /mnt/uploads ext4 defaults,auto,users,rw,nofail 0 0
+```
+
+### **2. Upload-Ordner auf externe Festplatte umleiten**
+
+In `server.py`:
+
+```python
+UPLOAD_FOLDER = Path('/mnt/uploads')
+```
+
+---
+
+## 🔄 **Updates und Wartung**
+
+### **System Updates**
+
+```bash
+# Regelmäßig ausführen
+sudo apt update && sudo apt upgrade -y
+sudo apt autoremove -y
+```
+
+### **Projekt Updates**
+
+```bash
+# In das Projektverzeichnis wechseln
+cd /home/pi/Famielenserver
+
+# Updates von GitHub holen
+git pull origin main
+
+# Frontend-Updates
+cd familienserver
+npm install
+npm run build
+cd ..
+
+# Backend-Updates
 source venv/bin/activate
 pip install -r requirements.txt
 
-# Frontend-Aktualisierung
-cd familienserver
+# Services neu starten
+sudo systemctl restart familienserver-backend.service
+sudo systemctl restart familienserver-frontend.service
+```
+
+### **Logs bereinigen**
+
+```bash
+# System-Logs bereinigen
+sudo journalctl --vacuum-size=100M
+
+# NPM-Logs bereinigen
+npm cache clean --force
+```
+
+---
+
+## 📝 **Häufige Probleme und Lösungen**
+
+### **Problem: Node.js zu langsam**
+
+**Lösung:** Node.js Version prüfen und ggf. neu installieren:
+
+```bash
+node -v  # Sollte 18+ sein
+npm -v   # Sollte 8+ sein
+
+# Falls nötig, Node.js neu installieren
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+---
+
+### **Problem: Python Abhängigkeiten fehlen**
+
+**Lösung:** Virtuelle Umgebung neu erstellen:
+
+```bash
+rm -rf venv
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+---
+
+### **Problem: Nicht genug Speicher**
+
+**Lösung:**
+
+1. **Swap-Datei erweitern** (siehe Performance-Optimierungen)
+2. **Maximale Dateigröße reduzieren**
+3. **Unnötige Dateien löschen:**
+
+```bash
+# Node.js Cache bereinigen
+npm cache clean --force
+
+# Unnötige Python-Pakete bereinigen
+pip cache purge
+
+# System temporäre Dateien bereinigen
+sudo apt clean
+sudo apt autoclean
+```
+
+---
+
+### **Problem: Services starten nicht**
+
+**Lösung:**
+
+```bash
+# Logs prüfen
+sudo journalctl -u familienserver-backend.service -xe
+sudo journalctl -u familienserver-frontend.service -xe
+
+# Manuell testen
+source venv/bin/activate
+python3 server.py
+```
+
+---
+
+### **Problem: Frontend baut nicht**
+
+**Lösung:**
+
+```bash
+# In familienserver-Verzeichnis
+cd /home/pi/Famielenserver/familienserver
+
+# Node.js Cache bereinigen
+rm -rf .next node_modules
+npm cache clean --force
+
+# Abhängigkeiten neu installieren
 npm install
+
+# Neu bauen
 npm run build
 ```
 
 ---
 
-## 🛠️ Fehlerbehebung
-
-### Problem: Node.js-Build scheitert (Out of Memory)
+### **Problem: Port bereits in Verwendung**
 
 **Lösung:**
-1. Swap-Speicher erhöhen (siehe oben)
-2. Build in Schritten durchführen:
-   ```bash
-   npm install --max-old-space-size=512
-   npm run build --max-old-space-size=512
-   ```
-3. Oder auf einem leistungsfähigeren Rechner bauen und dann kopieren
 
-### Problem: Python-Abhängigkeiten installieren scheitert
-
-**Lösung:**
 ```bash
-# Single-Thread-Installation
-pip install --no-cache-dir -r requirements.txt
-
-# Oder Pakete einzeln installieren
-pip install flask
-pip install psutil
-```
-
-### Problem: Port bereits belegt
-
-**Lösung:**
-```bash
-# Prozess finden
-sudo lsof -i :5000
+# Welche Prozesse nutzen Port 3000 oder 5000?
 sudo lsof -i :3000
+sudo lsof -i :5000
 
 # Prozess beenden
-sudo kill -9 PROCESS_ID
+kill -9 <PID>
 ```
-
-### Problem: Frontend kann Backend nicht erreichen
-
-**Lösung:**
-1. Prüfe, ob Backend läuft:
-   ```bash
-   curl http://localhost:5000/api/files
-   ```
-2. Prüfe die API_BASE_URL im Frontend:
-   ```bash
-   # In familienserver/.env.local
-   NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
-   ```
-3. Falls im Netzwerk: Verwende die IP-Adresse des Pi
 
 ---
 
-## 📈 Systemüberwachung
+## 📊 **Hardware-Empfehlungen**
 
-### CPU-Temperatur prüfen
+| Komponent | Raspberry Pi 3B | Raspberry Pi 3B+ | Raspberry Pi 4 (2GB) | Raspberry Pi 4 (4GB) | Raspberry Pi 5 |
+|-----------|----------------|------------------|----------------------|----------------------|----------------|
+| **Performance** | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Max. Benutzer** | 2-3 | 3-5 | 5-10 | 10-20 | 20+ |
+| **Max. Dateigröße** | 100MB | 200MB | 500MB | 1GB | 2GB+ |
+| **Empfohlen für** | Test | Kleine Familie | Familie | Große Familie | Produktion |
+
+---
+
+## 💡 **Tipps für bessere Performance**
+
+1. **Verwende LAN statt WiFi** - Schnellere und stabilere Verbindung
+2. **Aktiviere CPU-Übertaktung** (nur für erfahrene Benutzer)
+3. **Verwende eine SSD** mit USB-Adapter für schnelleren Speicher
+4. **Reduziere gleichzeitige Uploads** auf 1-2 Dateien
+5. **Verwende Komprimierung** für große Dateien
+6. **Deaktiviere nicht benötigte Dienste** auf dem Pi
+7. **Nutze einen Kühlkörper** für bessere CPU-Leistung
+
+---
+
+## 🌡️ **CPU-Temperatur überwachen**
+
 ```bash
-vcgencmd measure_temp
+# Temperatur in Echtzeit anzeigen
+watch -n 1 vcgencmd measure_temp
+
+# Throttling prüfen (wichtig!)
+vcgencmd get_throttled
 ```
 
-### Speichernutzung prüfen
-```bash
-free -h
-```
+**Erklärung der Throttling-Codes:**
+- `0` = Kein Throttling (gut)
+- `1` = Under-voltage
+- `2` = Arm frequency capped
+- `4` = Throttling wegen hoher Temperatur
+- `8` = Soft temperature limit
 
-### Festplattennutzung prüfen
-```bash
-df -h
-```
-
-### Laufende Prozesse anzeigen
-```bash
-top
-# oder
-htop
-```
+**Lösung bei Throttling:**
+- Kühlkörper anbringen
+- Lüfter installieren
+- Gehäuse öffnen oder bessere Belüftung
+- CPU-Frequenz begrenzen
 
 ---
 
-## 💡 Tipps für bessere Performance
+## 📚 **Dokumentation**
 
-1. **Nutze eine schnelle MicroSD-Karte** (UHS-I oder UHS-II)
-2. **Führe regelmäßige Reboots durch** (z.B. einmal pro Woche)
-3. **Begrenze die Upload-Größe** in `server.py`:
-   ```python
-   app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB
-   ```
-4. **Nutze eine externe Festplatte** für Uploads
-5. **Deaktiviere unnötige Dienste** (Bluetooth, HDMI, etc.)
+- [Haupt-Dokumentation (README.md)](README.md)
+- [Docker-Anleitung (DOCKER.md)](DOCKER.md)
+- [Anleitung ohne Docker (ohne_docker.md)](ohne_docker.md)
+- [API-Dokumentation](API.md)
 
 ---
 
-## 📝 Raspberry Pi 3B Spezifikationen
+## 🤝 **Community & Support**
 
-| Komponent | Spezifikation |
-|-----------|---------------|
-| Prozessor | Broadcom BCM2837B0, Cortex-A53 (ARMv8) 64-bit @ 1.4GHz |
-| RAM | 1GB LPDDR2 |
-| GPU | Broadcom VideoCore IV |
-| Netzwerk | 10/100 Ethernet, 802.11n WLAN |
-| USB | 4x USB 2.0 |
-| GPIO | 40 Pins |
-
-**Hinweis:** Der Pi 3B hat einen 64-bit-Prozessor, läuft aber standardmäßig mit 32-bit-OS.
+Bei Problemen oder Fragen:
+1. **Logs prüfen** (siehe oben)
+2. **Systemauslastung prüfen** (`htop`, `vcgencmd measure_temp`)
+3. **Fehlerbeschreibung aufschreiben** (genaue Fehlermeldung)
+4. **Raspberry Pi Modell und OS-Version angeben**
 
 ---
 
-## 🎯 Fazit
+## 📜 **Lizenz**
 
-Der Familienserver läuft **perfekt auf dem Raspberry Pi 3B** ohne Docker:
-
-- ✅ **Flask-Backend** - Leichtgewichtig, Python-basiert
-- ✅ **Next.js-Frontend** - React, optimiert für ARM
-- ✅ **Systemauslastung** - Korrekte Werte für Raspberry Pi
-- ✅ **Chatbot** - Regelbasiert, ohne externe Abhängigkeiten
-- ✅ **Datei-Upload** - Funktioniert mit allen Dateitypen
-- ✅ **Autostart** - Startet automatisch nach Neustart
-
-**Empfohlene Konfiguration:**
-- Raspberry Pi 3B+ (besser als 3B)
-- 32GB MicroSD-Karte (oder externe Festplatte)
-- Statische IP-Adresse
-- Autostart über systemd
+Dieses Projekt ist für den persönlichen Gebrauch im Heimnetzwerk gedacht.
 
 ---
 
-**Viel Erfolg mit deinem Familienserver auf dem Raspberry Pi!** 🍓🎉
+## 🎯 **Zusammenfassung**
+
+✅ **Empfohlen für Raspberry Pi 3B:** Direkte Installation ohne Docker
+✅ **Maximale Dateigröße:** 100-200MB
+✅ **Gleichzeitige Benutzer:** 2-5
+✅ **Performance:** Gut für kleine Familien
+✅ **Speicher:** 8GB+ SD-Karte
+
+🚀 **Für bessere Performance:** Raspberry Pi 4 (2GB+) verwenden
+
+---
+
+*Erstellt mit ❤️ für Familien und Raspberry Pi Enthusiasten*
