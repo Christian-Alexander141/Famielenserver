@@ -32,9 +32,7 @@ export default function FileUpload({ apiBaseUrl, onUploadSuccess, devMode }: Fil
     }
     
     if (selectedFiles.length === 1) {
-      const file = selectedFiles[0];
-      // @ts-ignore - webkitRelativePath exists on File in some browsers
-      return file.webkitRelativePath || file.name;
+      return selectedFiles[0].name;
     }
     
     return `${selectedFiles.length} Dateien ausgewählt`;
@@ -53,15 +51,11 @@ export default function FileUpload({ apiBaseUrl, onUploadSuccess, devMode }: Fil
     try {
       const uploadPromises = Array.from(selectedFiles).map(async (file, index) => {
         const formData = new FormData();
-        
-        // @ts-ignore - webkitRelativePath exists on File in some browsers
-        const filePath = file.webkitRelativePath || file.name;
-        formData.append("file", file, filePath);
+        formData.append("file", file, file.name);
 
         if (devMode) {
-          // In Entwicklungsmodus: simulierter Upload
           await new Promise(resolve => setTimeout(resolve, 200));
-          return { success: true, filename: filePath };
+          return { success: true, filename: file.name };
         }
 
         const response = await axios.post(`${apiBaseUrl}/api/upload`, formData, {
@@ -77,7 +71,6 @@ export default function FileUpload({ apiBaseUrl, onUploadSuccess, devMode }: Fil
 
       await Promise.all(uploadPromises);
       
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -99,66 +92,71 @@ export default function FileUpload({ apiBaseUrl, onUploadSuccess, devMode }: Fil
     }
   };
 
-  return (
-    <div className="space-y-4">
-      {/* File input and buttons in a row */}
-      <div className="flex flex-wrap items-center gap-4">
-        {/* File input - visible so user can see it's clickable */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          id="fileInput"
-          onChange={handleFileChange}
-          multiple
-          // Use webkitdirectory for directory selection (Chrome, Edge, Opera, Safari)
-          // Note: Firefox does not support directory selection
-          webkitdirectory=""
-          className="block w-full max-w-md text-sm text-gray-400"
-          accept="*"
-        />
-        
-        {/* Upload button - disabled only when no files selected or uploading */}
-        <button
-          onClick={handleUpload}
-          className="ios-button flex-shrink-0"
-          disabled={!selectedFiles || uploading}
-        >
-          {uploading ? (
-            <span>⬆️ Hochladen... {uploadProgress}%</span>
-          ) : (
-            <span>⬆️ Hochladen</span>
-          )}
-        </button>
-      </div>
+  const handleSelectFiles = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
-      {/* Selected files display */}
+  return (
+    <div className="space-y-3">
+      {/* Haupt-Button zum Datei-Auswählen */}
+      <button
+        onClick={handleSelectFiles}
+        className="ios-button w-full"
+      >
+        📁 Dateien auswählen
+      </button>
+
+      {/* Versteckter File Input - wird durch Button ausgelöst */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        id="fileInput"
+        onChange={handleFileChange}
+        multiple
+        style={{ display: 'none' }}  // Versteckt, aber funktioniert mit Button
+      />
+
+      {/* Ausgewählte Dateien anzeigen */}
       {selectedFiles && selectedFiles.length > 0 && (
-        <div className="text-sm text-gray-400">
-          {getFileNameDisplay()}
+        <div className="bg-gray-800 rounded-lg p-3">
+          <p className="text-sm text-white">
+            <strong>Ausgewählt:</strong> {getFileNameDisplay()}
+          </p>
         </div>
       )}
 
-      {/* Error message */}
+      {/* Upload-Button - nur aktiv, wenn Dateien ausgewählt */}
+      <button
+        onClick={handleUpload}
+        className="ios-button w-full"
+        disabled={!selectedFiles || uploading}
+      >
+        {uploading ? (
+          <span>⬆️ Hochladen... {uploadProgress}%</span>
+        ) : (
+          <span>⬆️ Hochladen</span>
+        )}
+      </button>
+
+      {/* Fehler anzeigen */}
       {error && (
-        <div className="text-red-500 text-sm">
-          {error}
+        <div className="bg-red-900/30 border border-red-700 rounded-lg p-2 text-red-400 text-sm">
+          ❌ {error}
         </div>
       )}
       
-      {/* Upload progress */}
-      {uploading && (
-        <div className="text-green-500 text-sm">
-          {uploadProgress < 100 ? `Lade hoch: ${uploadProgress}%` : "Fertig!"}
+      {/* Fortschritt anzeigen */}
+      {uploading && uploadProgress > 0 && (
+        <div className="bg-green-900/30 border border-green-700 rounded-lg p-2 text-green-400 text-sm">
+          ✅ {uploadProgress < 100 ? `Lädt hoch: ${uploadProgress}%` : "Fertig! Aktualisiere die Seite..."}
         </div>
       )}
 
-      {/* Browser compatibility notice */}
-      <div className="text-xs text-gray-500">
-        <p>
-          💡 <strong>Hinweis:</strong> 
-          In Chrome, Edge, Opera und Safari können Sie ganze Ordner auswählen. 
-          In Firefox können nur einzelne Dateien hochgeladen werden.
-        </p>
+      {/* Browser-Hinweis */}
+      <div className="text-xs text-gray-500 text-center pt-2">
+        Klicken Sie auf "Dateien auswählen" um Dateien von Ihrem Computer hochzuladen
       </div>
     </div>
   );
