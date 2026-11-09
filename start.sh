@@ -3,8 +3,16 @@
 # Familienserver Start Skript
 # Dies Skript startet sowohl das Backend (Flask) als auch das Frontend (Next.js)
 
+# Speichere das aktuelle Arbeitsverzeichnis
+START_DIR=$(pwd)
+
+# Ermittle das Verzeichnis, in dem dieses Skript liegt
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 echo "🗂️  Familienserver Start Skript"
 echo "=========================================="
+echo "Skript-Verzeichnis: $SCRIPT_DIR"
+echo "Aktuelles Verzeichnis: $START_DIR"
 echo ""
 
 # Überprüfe ob Python installiert ist
@@ -30,9 +38,6 @@ fi
 
 echo "✅ Voraussetzungen geprüft"
 echo ""
-
-# Aktuelles Verzeichnis speichern
-SCRIPT_DIR="$( cd "$((dirname "${BASH_SOURCE[0]}"))" && pwd )"
 
 # Optionen anzeigen
 echo "Wählen Sie eine Option:"
@@ -72,16 +77,18 @@ case $option in
         
         # Backend in Hintergrund starten
         cd "$SCRIPT_DIR"
-        python3 server.py &
+        python3 server.py > backend.log 2>&1 &
         BACKEND_PID=$!
+        echo "Backend gestartet (PID: $BACKEND_PID)"
         
         # Warten bis Backend gestartet ist
         sleep 3
         
         # Frontend starten
         cd "$SCRIPT_DIR/familienserver"
-        npm run dev &
+        npm run dev > frontend.log 2>&1 &
         FRONTEND_PID=$!
+        echo "Frontend gestartet (PID: $FRONTEND_PID)"
         
         # Auf beide Prozesse warten
         wait $BACKEND_PID $FRONTEND_PID
