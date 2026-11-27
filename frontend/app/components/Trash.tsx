@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Icon from "./Icon";
-import { ConfirmDialog } from "./dialogs";
-import { useToast } from "./Toast";
-import { EmptyState, ErrorText, FileIcon, Loading } from "./ui";
+import FileIcon from "./files/FileIcon";
+import ConfirmDialog from "./ui/ConfirmDialog";
+import Icon from "./ui/Icon";
+import { useToast } from "./ui/Toast";
+import { EmptyState, ErrorText, Loading } from "./ui/feedback";
 import { apiGet, apiPost, errorMessage } from "../lib/api";
 import { fileKind, formatDate, formatSize, parentPath } from "../lib/files";
 

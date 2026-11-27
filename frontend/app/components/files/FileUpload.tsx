@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Icon from "./Icon";
-import { entriesFromDataTransfer, entriesFromFileList, type Uploader } from "../lib/useUploader";
-import { formatSize, isExternalFileDrag } from "../lib/files";
+import Icon from "../ui/Icon";
+import { entriesFromDataTransfer, entriesFromFileList, type Uploader } from "../../lib/useUploader";
+import { formatSize, isExternalFileDrag } from "../../lib/files";
 
 interface FileUploadProps {
   uploader: Uploader;

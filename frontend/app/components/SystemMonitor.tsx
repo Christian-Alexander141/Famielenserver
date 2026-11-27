@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Icon, { type IconName } from "./Icon";
-import { ErrorText, Loading } from "./ui";
+import Icon, { type IconName } from "./ui/Icon";
+import { ErrorText, Loading } from "./ui/feedback";
 import { apiGet } from "../lib/api";
 import { formatSize } from "../lib/files";
 

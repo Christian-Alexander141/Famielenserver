@@ -1,6 +1,6 @@
 # 🐳 Familienserver mit Docker
 
-Ein einzelner Container enthält Frontend und Backend. Gut geeignet für einen Heimserver, ein NAS oder einen Raspberry Pi 4/5. Auf dem Pi 3B ist die Installation ohne Docker sparsamer, siehe [RASPBERRY_PI.md](RASPBERRY_PI.md).
+Ein einzelner Container enthält Frontend und Backend. Gut geeignet für einen Heimserver, ein NAS oder einen Raspberry Pi 4/5. Auf dem Pi 3B ist die Installation ohne Docker sparsamer, siehe [Anleitung für den Raspberry Pi](raspberry-pi.md).
 
 ## Starten
 
@@ -25,7 +25,7 @@ git pull && docker compose up -d --build    # Update
 
 ## Daten
 
-Alle Dateien liegen im Ordner `./data` neben der `docker-compose.yml`, eingebunden als `/data` im Container. Das ist der einzige Ordner, der gesichert werden muss (siehe `backup.sh` im [README](README.md#daten-und-datensicherung)).
+Alle Dateien liegen im Ordner `./data` neben der `docker-compose.yml`, eingebunden als `/data` im Container. Das ist der einzige Ordner, der gesichert werden muss (siehe `backup.sh` im [README](../README.md#daten-und-datensicherung)).
 
 Ein anderer Speicherort, z. B. eine USB-Platte: In `docker-compose.yml` unter `volumes` den Eintrag `./data:/data` ändern, etwa zu `/mnt/familie/familienserver:/data`.
 
@@ -37,7 +37,7 @@ sudo chown -R 1000:1000 data logs
 
 ## Einstellungen
 
-Alle Variablen aus der [Tabelle im README](README.md#einstellungen) können in `.env` gesetzt werden. `docker compose` reicht sie an den Container weiter. Der Port wird in `docker-compose.yml` geändert, z. B. `"8080:5000"`.
+Alle Variablen aus der [Tabelle im README](../README.md#einstellungen) können in `.env` gesetzt werden. `docker compose` reicht sie an den Container weiter. Der Port wird in `docker-compose.yml` geändert, z. B. `"8080:5000"`.
 
 ## Hinter einem Reverse Proxy mit HTTPS
 

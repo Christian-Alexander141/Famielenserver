@@ -1,6 +1,6 @@
-# 🚀 Familienserver ohne Docker – manuelle Installation
+# 🔧 Familienserver manuell installieren (ohne Startskript)
 
-Normalerweise reicht `./start.sh` (siehe [README](README.md#-schnellstart)). Diese Anleitung zeigt die einzelnen Schritte, die das Skript ausführt, für eigene Setups oder bei Problemen.
+Normalerweise reicht `./start.sh` (siehe [README](../README.md#-schnellstart)). Diese Anleitung zeigt die einzelnen Schritte, die das Skript ausführt, für eigene Setups oder bei Problemen.
 
 ## 1. Python-Umgebung
 
@@ -21,9 +21,9 @@ chmod 600 .env
 ## 3. Frontend bauen
 
 ```bash
-cd familienserver
+cd frontend
 npm ci
-npm run build    # erzeugt familienserver/out
+npm run build    # erzeugt frontend/out
 cd ..
 ```
 
@@ -48,7 +48,7 @@ venv/bin/python server.py --port 8080
 
 ```bash
 venv/bin/python server.py --debug      # Backend mit Auto-Reload, nur unter 127.0.0.1
-cd familienserver && npm run dev       # Frontend mit Hot-Reload: http://localhost:3000
+cd frontend && npm run dev             # Frontend mit Hot-Reload: http://localhost:3000
 ```
 
 `--debug` bindet den Server absichtlich nur an `127.0.0.1`, weil der Werkzeug-Debugger das Ausführen von Code erlaubt.

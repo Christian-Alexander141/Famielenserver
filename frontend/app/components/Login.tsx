@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Icon from "./Icon";
-import { ErrorText } from "./ui";
+import Icon from "./ui/Icon";
+import { ErrorText } from "./ui/feedback";
 import { apiPost, errorMessage } from "../lib/api";
 
 export default function Login({ onLoggedIn }: { onLoggedIn: () => void }) {

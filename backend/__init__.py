@@ -36,7 +36,7 @@ PAGE_CSP = (
 FRONTEND_MISSING = (
     "Das Frontend ist noch nicht gebaut.\n\n"
     "Bitte einmal ausführen:\n"
-    "    cd familienserver && npm ci && npm run build\n\n"
+    "    cd frontend && npm ci && npm run build\n\n"
     "oder ./start.sh verwenden.\n"
 )
 
@@ -166,7 +166,7 @@ def _register_errors(app: Flask) -> None:
 
 
 def _register_frontend(app: Flask, frontend_dir: Path) -> None:
-    """Liefert das statisch exportierte Next.js-Frontend aus (familienserver/out)."""
+    """Liefert das statisch exportierte Next.js-Frontend aus (frontend/out)."""
 
     @app.get("/", defaults={"path": ""})
     @app.get("/<path:path>")

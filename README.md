@@ -31,7 +31,7 @@ Fotos, Rechnungen, Zeugnisse und Rezepte an einem Ort: hochladen, ordnen, wieder
 
 ## ⚡ Schnellstart
 
-**Du brauchst:** Linux (z. B. Raspberry Pi OS), **Python 3.9+** und **Node.js 20+**. Node wird nur zum einmaligen Bauen der Oberfläche gebraucht. Auf dem Raspberry Pi geht es auch ohne, siehe [RASPBERRY_PI.md](RASPBERRY_PI.md).
+**Du brauchst:** Linux (z. B. Raspberry Pi OS), **Python 3.9+** und **Node.js 20+**. Node wird nur zum einmaligen Bauen der Oberfläche gebraucht. Auf dem Raspberry Pi geht es auch ohne, siehe [Anleitung für den Raspberry Pi](docs/raspberry-pi.md).
 
 ```bash
 git clone https://github.com/Christian-Alexander141/Famielenserver.git
@@ -47,8 +47,8 @@ Damit der Server nach jedem Neustart automatisch läuft:
 ./start.sh service
 ```
 
-> 🍓 Ausführliche Anleitung für den Raspberry Pi (feste IP, USB-Festplatte, Firewall): **[RASPBERRY_PI.md](RASPBERRY_PI.md)**
-> 🐳 Mit Docker: **[DOCKER.md](DOCKER.md)** · 🔧 Schritt für Schritt ohne Skript: **[ohne_docker.md](ohne_docker.md)**
+> 🍓 Ausführliche Anleitung für den Raspberry Pi (feste IP, USB-Festplatte, Firewall): **[docs/raspberry-pi.md](docs/raspberry-pi.md)**
+> 🐳 Mit Docker: **[docs/docker.md](docs/docker.md)** · 🔧 Schritt für Schritt ohne Skript: **[docs/manuelle-installation.md](docs/manuelle-installation.md)**
 
 ---
 
@@ -143,6 +143,8 @@ git pull
 sudo systemctl restart familienserver
 ```
 
+Die Oberfläche liegt im Ordner `frontend/` (bis November 2026 hieß er `familienserver/`). Bei älteren Installationen übernimmt `./start.sh` einen vorhandenen Build und räumt den alten Ordner von selbst auf.
+
 ---
 
 ## 🔄 Umstieg von Version 1
@@ -153,7 +155,7 @@ sudo systemctl restart familienserver
 | Anmeldung | keine | Familien-Passwort, `./start.sh` fragt beim ersten Start danach |
 | Dateien | `familienserver/public/uploads` | `data/`, wird beim ersten Start automatisch umgezogen |
 | Löschen | sofort endgültig | erst in den Papierkorb |
-| Dienste | Backend- und Frontend-Dienst | ein Dienst, siehe [RASPBERRY_PI.md](RASPBERRY_PI.md#autostart) |
+| Dienste | Backend- und Frontend-Dienst | ein Dienst, siehe [Raspberry-Pi-Anleitung](docs/raspberry-pi.md#autostart) |
 | Python-Pakete | `requirements.txt` | `pyproject.toml` (installiert `start.sh` automatisch) |
 | `NEXT_PUBLIC_API_BASE_URL` | nötig | entfällt |
 
@@ -165,12 +167,12 @@ sudo systemctl restart familienserver
 ./start.sh dev                          # Backend + Oberfläche mit automatischem Neuladen → http://localhost:3000
 venv/bin/pip install -e ".[dev]"        # Abhängigkeiten inkl. pytest (aus pyproject.toml)
 venv/bin/python -m pytest               # Backend-Tests
-cd familienserver && npm run lint       # Oberfläche prüfen
+cd frontend && npm run lint             # Oberfläche prüfen
 ```
 
 Bei jedem Push prüft die [CI](.github/workflows/ci.yml) Tests, Typen, Lint und Build.
 
-**Aufbau:** Die Oberfläche (Next.js) wird als statische Seite nach `familienserver/out` gebaut. Im Betrieb liefert das Flask-Backend sie zusammen mit der API aus. Das ist ein Prozess auf einem Port, und auf dem Pi läuft kein Node.js mit. Im Entwicklungsmodus leitet Next.js `/api/*` an das Backend auf `127.0.0.1:5000` weiter.
+**Aufbau:** Die Oberfläche (Next.js) wird als statische Seite nach `frontend/out` gebaut. Im Betrieb liefert das Flask-Backend sie zusammen mit der API aus. Das ist ein Prozess auf einem Port, und auf dem Pi läuft kein Node.js mit. Im Entwicklungsmodus leitet Next.js `/api/*` an das Backend auf `127.0.0.1:5000` weiter.
 
 ```
 Famielenserver/
@@ -178,17 +180,19 @@ Famielenserver/
 │   ├── __init__.py       App, Fehlerbehandlung, Protokolle, Auslieferung der Oberfläche
 │   ├── api.py            REST-API unter /api
 │   ├── auth.py           Anmeldung, CSRF-Schutz, Sperre bei Fehlversuchen
+│   ├── config.py         Einstellungen aus .env bzw. Umgebungsvariablen
 │   ├── storage.py        Dateizugriff, Pfadprüfung, Papierkorb
 │   ├── search.py         Dateisuche
 │   ├── system.py         CPU/RAM/Speicher/Temperatur
 │   ├── thumbnails.py     Vorschaubilder (Pillow)
 │   └── zipstream.py      ZIP-Download ohne Zwischenspeicher
-├── familienserver/     Next.js-Oberfläche (app/page.tsx, app/components/, app/lib/)
-├── tests/              Backend-Tests (pytest)
-├── docs/images/        Screenshots
-├── pyproject.toml      Python-Abhängigkeiten
+├── frontend/           Next.js-Oberfläche, Aufbau siehe frontend/README.md
+├── tests/              Backend-Tests (pytest): Sicherheit, Dateien, Papierkorb, App
+├── docs/               Anleitungen (Raspberry Pi, Docker, manuelle Installation), Screenshots
 ├── start.sh            Einrichten und Starten
 ├── backup.sh           Datensicherung
+├── server.py           Einfacher Entwicklungsserver (python server.py)
+├── pyproject.toml      Python-Abhängigkeiten
 ├── Dockerfile, docker-compose.yml
 ├── data/               Familiendateien    ┐
 └── logs/               Protokolle         ┘ nicht im Repository
@@ -230,7 +234,7 @@ Alle Endpunkte außer `/api/health`, `/api/session` und `/api/login` erfordern e
 | Upload bricht bei großen Dateien ab | `FAMILIENSERVER_MAX_UPLOAD_MB` erhöhen, freien Speicherplatz prüfen |
 | Was ist schiefgelaufen? | `logs/familienserver.log` und `logs/gunicorn.log` ansehen |
 
-Weitere Lösungen stehen in [RASPBERRY_PI.md](RASPBERRY_PI.md#-häufige-probleme) und [ohne_docker.md](ohne_docker.md#häufige-probleme).
+Weitere Lösungen stehen in der [Raspberry-Pi-Anleitung](docs/raspberry-pi.md#-häufige-probleme) und der [manuellen Installation](docs/manuelle-installation.md#häufige-probleme).
 
 ---
 

@@ -46,3 +46,18 @@ export default function Dialog({ title, onClose, children, wide = false }: Dialo
     </div>
   );
 }
+
+/** Schaltflächen am Fuß eines Dialogs – auf dem Handy untereinander, die Hauptaktion oben. */
+export function DialogActions({ children }: { children: ReactNode }) {
+  return <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">{children}</div>;
+}
+
+/** Beschriftung einer Schaltfläche, die während der Aktion einen Ladekreis zeigt. */
+export function BusyLabel({ busy, label }: { busy: boolean; label: string }) {
+  return (
+    <>
+      {busy && <span className="spinner size-4" />}
+      {label}
+    </>
+  );
+}

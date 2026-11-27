@@ -5,16 +5,16 @@
 
 FROM node:20-alpine AS frontend
 WORKDIR /build
-COPY familienserver/package.json familienserver/package-lock.json ./
+COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
-COPY familienserver/ ./
+COPY frontend/ ./
 RUN npm run build
 
 FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     FAMILIENSERVER_DATA_DIR=/data \
-    FAMILIENSERVER_FRONTEND_DIR=/app/familienserver/out \
+    FAMILIENSERVER_FRONTEND_DIR=/app/frontend/out \
     FAMILIENSERVER_LOG_DIR=/app/logs
 WORKDIR /app
 
@@ -23,7 +23,7 @@ COPY pyproject.toml README.md ./
 COPY backend/ ./backend/
 RUN pip install --no-cache-dir -e .
 COPY server.py ./
-COPY --from=frontend /build/out ./familienserver/out
+COPY --from=frontend /build/out ./frontend/out
 
 # Nicht als root laufen. UID 1000 entspricht dem ersten Benutzer auf den meisten
 # Linux-Systemen (auch „pi“ auf dem Raspberry Pi) – so passen die Dateirechte in ./data.

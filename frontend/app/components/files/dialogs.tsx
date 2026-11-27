@@ -1,24 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import Dialog from "./Dialog";
-import Icon from "./Icon";
-import { ErrorText } from "./ui";
-import { apiGet, errorMessage } from "../lib/api";
-import { isSameOrInside, nameProblem, parentPath, type FileItem, type Listing } from "../lib/files";
-
-function DialogActions({ children }: { children: React.ReactNode }) {
-  return <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">{children}</div>;
-}
-
-function BusyLabel({ busy, label }: { busy: boolean; label: string }) {
-  return (
-    <>
-      {busy && <span className="spinner size-4" />}
-      {label}
-    </>
-  );
-}
+import Dialog, { BusyLabel, DialogActions } from "../ui/Dialog";
+import Icon from "../ui/Icon";
+import { ErrorText } from "../ui/feedback";
+import { apiGet, errorMessage } from "../../lib/api";
+import { isSameOrInside, nameProblem, parentPath, type FileItem, type Listing } from "../../lib/files";
 
 // ------------------------------------------------------------ Name eingeben
 
@@ -89,55 +76,6 @@ export function NameDialog({ title, initial = "", confirmLabel, selectStem, onSu
           </button>
         </DialogActions>
       </form>
-    </Dialog>
-  );
-}
-
-// ---------------------------------------------------------------- Bestätigen
-
-interface ConfirmDialogProps {
-  title: string;
-  message: React.ReactNode;
-  confirmLabel: string;
-  danger?: boolean;
-  onConfirm: () => Promise<void>;
-  onClose: () => void;
-}
-
-export function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm, onClose }: ConfirmDialogProps) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const confirm = async () => {
-    setBusy(true);
-    try {
-      await onConfirm();
-      onClose();
-    } catch (err) {
-      setError(errorMessage(err));
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Dialog title={title} onClose={onClose}>
-      <div className="flex gap-3.5">
-        {danger && (
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-danger/12 text-danger-text">
-            <Icon name="trash" className="size-5" />
-          </span>
-        )}
-        <div className="min-w-0 pt-0.5 text-sm text-muted">{message}</div>
-      </div>
-      {error && <ErrorText className="mt-3">{error}</ErrorText>}
-      <DialogActions>
-        <button type="button" onClick={onClose} className="btn btn-secondary">
-          Abbrechen
-        </button>
-        <button type="button" onClick={confirm} className={`btn ${danger ? "btn-danger" : "btn-primary"}`} disabled={busy} autoFocus>
-          <BusyLabel busy={busy} label={confirmLabel} />
-        </button>
-      </DialogActions>
     </Dialog>
   );
 }

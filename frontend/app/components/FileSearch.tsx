@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import Icon from "./Icon";
-import { FileIcon } from "./ui";
+import Icon from "./ui/Icon";
+import FileIcon from "./files/FileIcon";
 import { apiPost, downloadUrl, errorMessage, startDownload, zipUrl } from "../lib/api";
 import { fileKind, formatSize, parentPath, type FileItem } from "../lib/files";
 
@@ -21,7 +21,7 @@ interface ChatMessage {
   results?: FileItem[];
 }
 
-interface ChatInterfaceProps {
+interface FileSearchProps {
   /** Öffnet einen Ordner im Dateibrowser */
   onOpenFolder: (path: string) => void;
 }
@@ -61,7 +61,8 @@ function Result({ item, onOpenFolder }: { item: FileItem; onOpenFolder: (path: s
   );
 }
 
-export default function ChatInterface({ onOpenFolder }: ChatInterfaceProps) {
+/** Dateisuche über alle Ordner im Stil eines Chats: Frage stellen, Treffer anklicken. */
+export default function FileSearch({ onOpenFolder }: FileSearchProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);

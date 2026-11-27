@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Dialog from "./Dialog";
-import Icon from "./Icon";
-import { ErrorText, Loading } from "./ui";
-import { downloadUrl, errorMessage, startDownload } from "../lib/api";
-import { fileKind, formatDate, formatSize, type FileItem } from "../lib/files";
+import Dialog from "../ui/Dialog";
+import Icon from "../ui/Icon";
+import { ErrorText, Loading } from "../ui/feedback";
+import { downloadUrl, errorMessage, startDownload } from "../../lib/api";
+import { fileKind, formatDate, formatSize, type FileItem } from "../../lib/files";
 
 interface PreviewDialogProps {
   items: FileItem[];

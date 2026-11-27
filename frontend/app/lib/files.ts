@@ -92,10 +92,6 @@ export function parentPath(path: string): string {
   return index === -1 ? "" : path.slice(0, index);
 }
 
-export function joinPath(dir: string, name: string): string {
-  return dir ? `${dir}/${name}` : name;
-}
-
 /** Liegt `target` gleich `source` oder darin? (Ordner kann nicht in sich selbst verschoben werden) */
 export function isSameOrInside(target: string, source: string): boolean {
   return target === source || target.startsWith(`${source}/`);

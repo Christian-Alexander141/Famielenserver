@@ -1,7 +1,9 @@
 # ---------------------------------------------------------------- Daten
 # Hochgeladene Familiendateien gehören NIE ins Git-Repository.
 /data/
-familienserver/public/uploads/
+# Früherer Frontend-Ordner: nach dem Update nur noch Build-Reste und ggf.
+# Uploads aus Version 1 (start.sh räumt ihn auf)
+/familienserver/
 
 # Protokolle – landen alle im Ordner logs/
 /logs/
@@ -14,8 +16,8 @@ familienserver/public/uploads/
 
 # ------------------------------------------------------------- Frontend
 node_modules/
-familienserver/.next/
-familienserver/out/
+frontend/.next/
+frontend/out/
 *.tsbuildinfo
 next-env.d.ts
 npm-debug.log*
@@ -23,7 +25,7 @@ npm-debug.log*
 
 # --------------------------------------------------------------- Python
 # Bewusst nur im Wurzelverzeichnis – ein allgemeines „lib/“ hätte auch
-# familienserver/app/lib/ ignoriert.
+# frontend/app/lib/ ignoriert.
 __pycache__/
 *.py[cod]
 /build/

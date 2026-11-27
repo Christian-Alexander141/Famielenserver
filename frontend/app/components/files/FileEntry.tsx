@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import ActionMenu, { type MenuItem } from "./ActionMenu";
-import Icon from "./Icon";
-import { FileIcon } from "./ui";
-import { thumbnailUrl } from "../lib/api";
-import { fileKind, formatDate, formatSize, hasThumbnail, type FileItem } from "../lib/files";
+import ActionMenu, { type MenuItem } from "../ui/ActionMenu";
+import Icon from "../ui/Icon";
+import FileIcon from "./FileIcon";
+import { thumbnailUrl } from "../../lib/api";
+import { fileKind, formatDate, formatSize, hasThumbnail, type FileItem } from "../../lib/files";
 
 export interface EntryHandlers {
   onOpen: (item: FileItem) => void;

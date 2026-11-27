@@ -37,7 +37,7 @@ check_python() {
 }
 
 check_node() {
-  command -v npm >/dev/null || fail "Node.js/npm fehlt (wird nur zum Bauen des Frontends gebraucht). Siehe RASPBERRY_PI.md."
+  command -v npm >/dev/null || fail "Node.js/npm fehlt (wird nur zum Bauen des Frontends gebraucht). Siehe docs/raspberry-pi.md."
 }
 
 setup_venv() {
@@ -95,25 +95,44 @@ ensure_password() {
 # ------------------------------------------------------------------- Frontend
 
 frontend_outdated() {
-  local index="familienserver/out/index.html"
+  local index="frontend/out/index.html"
   [ ! -f "$index" ] && return 0
-  [ -n "$(find familienserver/app familienserver/package.json familienserver/next.config.ts -newer "$index" -print -quit)" ]
+  [ -n "$(find frontend/app frontend/package.json frontend/next.config.ts -newer "$index" -print -quit)" ]
 }
 
 build_frontend() {
   check_node
   info "Baue das Frontend (das kann auf dem Raspberry Pi einige Minuten dauern) …"
-  (cd familienserver && npm ci --no-audit --no-fund && npm run build)
+  (cd frontend && npm ci --no-audit --no-fund && npm run build)
 }
 
 ensure_frontend() {
   frontend_outdated || return 0
-  if ! command -v npm >/dev/null && [ -f familienserver/out/index.html ]; then
+  if ! command -v npm >/dev/null && [ -f frontend/out/index.html ]; then
     # z. B. Raspberry Pi ohne Node.js, Frontend wurde am PC gebaut und kopiert
-    info "npm nicht gefunden – verwende das vorhandene Frontend in familienserver/out."
+    info "npm nicht gefunden – verwende das vorhandene Frontend in frontend/out."
     return 0
   fi
   build_frontend
+}
+
+# Früher hieß der Frontend-Ordner „familienserver/“. Nach einem Update liegen dort nur
+# noch Build-Reste: einen fertigen Build übernehmen, den Rest entfernen. Andere Dateien
+# (z. B. Uploads aus Version 1 in public/uploads) bleiben unangetastet.
+cleanup_old_frontend_dir() {
+  local old=familienserver
+  # Nur ein echter Ordner (kein Link), aus dem das Update die Quelltexte schon entfernt hat
+  [ -d "$old" ] && [ ! -L "$old" ] && [ ! -e "$old/package.json" ] || return 0
+  if [ -d frontend ] && [ -f "$old/out/index.html" ] && [ ! -e frontend/out ]; then
+    mv "$old/out" frontend/out
+  fi
+  rm -rf "$old/node_modules" "$old/.next" "$old/out" "$old/next-env.d.ts" "$old/tsconfig.tsbuildinfo"
+  find "$old" -depth -type d -empty -delete 2>/dev/null || true
+  if [ -d "$old" ]; then
+    info "Im alten Ordner $old/ liegen noch Dateien (z. B. Uploads aus Version 1). Bitte prüfen und dann löschen."
+  else
+    info "Alten Ordner $old/ aufgeräumt – die Oberfläche liegt jetzt in frontend/."
+  fi
 }
 
 # ------------------------------------------------------------------- Aktionen
@@ -144,7 +163,7 @@ start_dev() {
   setup_venv
   ensure_password
   check_node
-  [ -d familienserver/node_modules ] || (cd familienserver && npm ci --no-audit --no-fund)
+  [ -d frontend/node_modules ] || (cd frontend && npm ci --no-audit --no-fund)
 
   mkdir -p "$LOG_DIR"
   "$VENV/bin/python" server.py --debug --port "$PORT" &
@@ -157,7 +176,7 @@ start_dev() {
   echo "   Änderungen am Code werden automatisch neu geladen. Beenden mit STRG+C."
   echo "   Protokolle: $LOG_DIR/ (familienserver.log, frontend-dev.log)"
   echo
-  (cd familienserver && FAMILIENSERVER_BACKEND_URL="http://127.0.0.1:$PORT" npm run dev 2>&1 | tee -a "$LOG_DIR/frontend-dev.log")
+  (cd frontend && FAMILIENSERVER_BACKEND_URL="http://127.0.0.1:$PORT" npm run dev 2>&1 | tee -a "$LOG_DIR/frontend-dev.log")
 }
 
 install_service() {
@@ -209,6 +228,8 @@ menu() {
     *) echo "👋 Auf Wiedersehen!" ;;
   esac
 }
+
+cleanup_old_frontend_dir
 
 case "${1:-}" in
   start) start_server ;;

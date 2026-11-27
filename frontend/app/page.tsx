@@ -1,113 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import ChatInterface from "./components/ChatInterface";
-import FileBrowser, { type SortState, type ViewMode } from "./components/FileBrowser";
-import FileUpload from "./components/FileUpload";
-import Icon, { type IconName } from "./components/Icon";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import AppHeader from "./components/AppHeader";
+import FileSearch from "./components/FileSearch";
 import Login from "./components/Login";
 import SystemMonitor from "./components/SystemMonitor";
 import Trash from "./components/Trash";
-import { ToastProvider, useToast } from "./components/Toast";
+import FileBrowser, { type SortState, type ViewMode } from "./components/files/FileBrowser";
+import FileUpload from "./components/files/FileUpload";
+import Icon from "./components/ui/Icon";
+import Panel from "./components/ui/Panel";
+import { ToastProvider, useToast } from "./components/ui/Toast";
 import { UNAUTHORIZED_EVENT, apiGet, apiPost, errorMessage } from "./lib/api";
 import type { FileItem, Listing, SessionInfo } from "./lib/files";
+import { navigate, useCurrentPath } from "./lib/location";
 import { entriesFromDataTransfer, useUploader } from "./lib/useUploader";
 
-// ------------------------------------------------- Aktueller Ordner in der URL
-// „#/Bilder/Urlaub“ – so funktionieren Zurück-Taste, Lesezeichen und Neuladen.
-
-function readPath(): string {
-  const raw = window.location.hash.replace(/^#\/?/, "");
-  try {
-    return decodeURIComponent(raw);
-  } catch {
-    return "";
-  }
-}
-
-function subscribeToHash(callback: () => void) {
-  window.addEventListener("hashchange", callback);
-  return () => window.removeEventListener("hashchange", callback);
-}
-
-function navigate(path: string) {
-  window.location.hash = path ? `/${path.split("/").map(encodeURIComponent).join("/")}` : "";
-}
-
-// ---------------------------------------------------------------- Bausteine
-
-function Logo() {
-  return (
-    <span className="grid size-8 place-items-center rounded-[10px] bg-linear-to-br from-[#5b8cff] to-[#2f5be8] text-white shadow-[var(--shadow-sm)]">
-      <Icon name="house" className="size-[18px]" />
-    </span>
-  );
-}
-
-function Header({ onLogout }: { onLogout?: () => void }) {
-  return (
-    <header className="sticky top-0 z-40 border-b border-line bg-bg/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-5xl items-center gap-2.5 px-4 sm:px-6">
-        <Logo />
-        <span className="text-[15px] font-semibold tracking-tight">Familienserver</span>
-        {onLogout && (
-          <button type="button" onClick={onLogout} className="btn btn-ghost btn-sm ml-auto -mr-2">
-            <Icon name="log-out" />
-            Abmelden
-          </button>
-        )}
-      </div>
-    </header>
-  );
-}
-
-interface PanelProps {
-  icon: IconName;
-  title: string;
-  description: string;
-  children: ReactNode;
-  collapsible?: boolean;
-}
-
-/** Karte mit Überschrift; aufklappbare Karten laden ihren Inhalt erst beim Öffnen. */
-function Panel({ icon, title, description, children, collapsible = false }: PanelProps) {
-  const [open, setOpen] = useState(!collapsible);
-  const heading = (
-    <>
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-muted">
-        <Icon name={icon} className="size-[18px]" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block font-semibold">{title}</span>
-        <span className="block text-sm text-muted">{description}</span>
-      </span>
-    </>
-  );
-  return (
-    <section className="card">
-      <h2>
-        {collapsible ? (
-          <button
-            type="button"
-            onClick={() => setOpen(!open)}
-            aria-expanded={open}
-            className={`flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-fg/3 sm:px-5 ${open ? "rounded-t-2xl" : "rounded-2xl"}`}
-          >
-            {heading}
-            <Icon name="chevron-down" className={`size-5 text-subtle transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-          </button>
-        ) : (
-          <span className="flex items-center gap-3 p-4 sm:px-5">{heading}</span>
-        )}
-      </h2>
-      {open && <div className="border-t border-line p-4 sm:p-5">{children}</div>}
-    </section>
-  );
-}
-
+/** Die Seite nach der Anmeldung: Hochladen, Dateien, Suche, Papierkorb, Systemauslastung. */
 function App({ session }: { session: SessionInfo }) {
   const notify = useToast();
-  const path = useSyncExternalStore(subscribeToHash, readPath, () => "");
+  const path = useCurrentPath();
   const [listing, setListing] = useState<{ path: string; items: FileItem[]; error?: string } | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [view, setView] = useState<ViewMode>("list");
@@ -159,7 +71,7 @@ function App({ session }: { session: SessionInfo }) {
       />
 
       <Panel icon="search" title="Dateisuche" description="Dateien in allen Ordnern finden" collapsible>
-        <ChatInterface onOpenFolder={navigate} />
+        <FileSearch onOpenFolder={navigate} />
       </Panel>
 
       <Panel icon="trash" title="Papierkorb" description="Gelöschte Dateien wiederherstellen" collapsible>
@@ -244,7 +156,7 @@ export default function Home() {
 
   return (
     <ToastProvider>
-      <Header onLogout={session?.authenticated ? logout : undefined} />
+      <AppHeader onLogout={session?.authenticated ? logout : undefined} />
       <main className="mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 sm:py-8">{body}</main>
     </ToastProvider>
   );

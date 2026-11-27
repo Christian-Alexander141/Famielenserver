@@ -37,11 +37,11 @@ Auf dem Pi 3B mit 1 GB RAM dauert der Build mehrere Minuten. Wenn er abbricht, h
 
 ```bash
 # auf dem PC, im Projektordner
-cd familienserver && npm ci && npm run build
-scp -r out pi@<IP-des-Pi>:~/Famielenserver/familienserver/
+cd frontend && npm ci && npm run build
+scp -r out pi@<IP-des-Pi>:~/Famielenserver/frontend/
 ```
 
-`./start.sh` erkennt dann, dass kein npm installiert ist, und nutzt den kopierten Ordner `familienserver/out`. Nach jedem Update mit Änderungen am Frontend diesen Schritt wiederholen.
+`./start.sh` erkennt dann, dass kein npm installiert ist, und nutzt den kopierten Ordner `frontend/out`. Nach jedem Update mit Änderungen am Frontend diesen Schritt wiederholen.
 
 ## 3. Installieren und starten
 
@@ -165,7 +165,7 @@ Neue Python-Pakete installiert `start.sh` beim nächsten Start automatisch.
 | `venv konnte nicht angelegt werden` | `sudo apt install python3-venv` |
 | `Kein Passwort gesetzt` | `./start.sh password` |
 | Frontend-Build bricht ab („JavaScript heap out of memory“) | Swap vergrößern oder Variante B (am PC bauen) |
-| Seite zeigt „Das Frontend ist noch nicht gebaut“ | `./start.sh build` oder `out/` vom PC kopieren |
+| Seite zeigt „Das Frontend ist noch nicht gebaut“ | `./start.sh build` oder `frontend/out` vom PC kopieren (Abschnitt 2 B) |
 | Von anderen Geräten nicht erreichbar | Läuft der Dienst? Gleiche IP/Port 5000? Firewall-Regel? |
 | `Address already in use` | Alter Dienst läuft noch: `sudo systemctl stop familienserver` bzw. alte v1-Dienste entfernen |
 | Platte nach Neustart nicht da | `nofail` in fstab und `RequiresMountsFor` im Dienst setzen (siehe Abschnitt 6) |

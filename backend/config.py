@@ -10,8 +10,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATA_DIR = REPO_ROOT / "data"
+# Bis Version 1 lagen die Uploads im damaligen Frontend-Ordner „familienserver/“
 LEGACY_UPLOAD_DIR = REPO_ROOT / "familienserver" / "public" / "uploads"
-DEFAULT_FRONTEND_DIR = REPO_ROOT / "familienserver" / "out"
+DEFAULT_FRONTEND_DIR = REPO_ROOT / "frontend" / "out"
 DEFAULT_LOG_DIR = REPO_ROOT / "logs"
 
 log = logging.getLogger("familienserver")
