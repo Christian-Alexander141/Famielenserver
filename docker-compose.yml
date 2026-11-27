@@ -1,4 +1,4 @@
-# Start:   mkdir -p data && docker compose up -d --build
+# Start:   mkdir -p data logs && docker compose up -d --build
 # Danach:  http://<IP-des-Servers>:5000
 #
 # Das Passwort steht in der Datei .env (siehe .env.example).
@@ -13,6 +13,8 @@ services:
     volumes:
       # Alle Familiendateien inkl. Papierkorb – hier liegt alles, was gesichert werden muss.
       - ./data:/data
+      # Protokolle (familienserver.log, rotierend)
+      - ./logs:/app/logs
     environment:
       FAMILIENSERVER_PASSWORD: ${FAMILIENSERVER_PASSWORD:?Bitte FAMILIENSERVER_PASSWORD in der Datei .env setzen}
       FAMILIENSERVER_TRASH_DAYS: ${FAMILIENSERVER_TRASH_DAYS:-30}

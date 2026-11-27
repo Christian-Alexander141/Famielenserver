@@ -3,6 +3,10 @@
 /data/
 familienserver/public/uploads/
 
+# Protokolle – landen alle im Ordner logs/
+/logs/
+*.log
+
 # Zugangsdaten und lokale Einstellungen
 .env
 .env.*
@@ -33,7 +37,6 @@ __pycache__/
 /env/
 
 # ------------------------------------------------------------ Sonstiges
-*.log
 *.tmp
 .DS_Store
 .idea/

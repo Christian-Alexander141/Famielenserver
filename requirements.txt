@@ -1,5 +1,0 @@
-Flask>=3.0,<4
-gunicorn>=22.0
-python-dotenv>=1.0
-# Optional: Vorschaubilder für Fotos. Ohne Pillow werden Symbole angezeigt.
-Pillow>=10.0

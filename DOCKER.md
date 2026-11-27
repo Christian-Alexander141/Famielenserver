@@ -7,7 +7,7 @@ Ein einzelner Container enthält Frontend und Backend. Gut geeignet für einen H
 ```bash
 cp .env.example .env
 nano .env                       # FAMILIENSERVER_PASSWORD=… eintragen
-mkdir -p data                   # vorher anlegen, sonst gehört der Ordner root
+mkdir -p data logs              # vorher anlegen, sonst gehören die Ordner root
 docker compose up -d --build
 ```
 
@@ -17,7 +17,7 @@ Danach ist der Server unter `http://<IP-des-Servers>:5000` erreichbar.
 
 ```bash
 docker compose ps               # Status (inkl. Healthcheck)
-docker compose logs -f          # Protokoll
+docker compose logs -f          # Protokoll (zusätzlich als Datei in ./logs)
 docker compose restart          # nach Änderungen an .env
 docker compose down             # stoppen (Daten in ./data bleiben erhalten)
 git pull && docker compose up -d --build    # Update
@@ -32,7 +32,7 @@ Ein anderer Speicherort, z. B. eine USB-Platte: In `docker-compose.yml` unter `v
 **Dateirechte:** Der Container läuft als Benutzer mit UID 1000 (der erste Benutzer auf den meisten Linux-Systemen). Gehört der Datenordner jemand anderem, gibt es beim Hochladen den Fehler *Permission denied*. Abhilfe:
 
 ```bash
-sudo chown -R 1000:1000 data
+sudo chown -R 1000:1000 data logs
 ```
 
 ## Einstellungen

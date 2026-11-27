@@ -7,7 +7,7 @@ Normalerweise reicht `./start.sh` (siehe [README](README.md#-schnellstart)). Die
 ```bash
 cd Famielenserver
 python3 -m venv venv
-venv/bin/pip install -r requirements.txt
+venv/bin/pip install -e .        # Abhängigkeiten aus pyproject.toml
 ```
 
 ## 2. Passwort festlegen
@@ -30,10 +30,12 @@ cd ..
 ## 4. Starten
 
 ```bash
-venv/bin/gunicorn --workers 1 --threads 8 --bind 0.0.0.0:5000 "backend:create_app()"
+mkdir -p logs
+venv/bin/gunicorn --workers 1 --threads 8 --bind 0.0.0.0:5000 \
+  --error-logfile logs/gunicorn.log "backend:create_app()"
 ```
 
-Der Server ist dann unter `http://<IP>:5000` erreichbar. Ein Worker mit mehreren Threads ist für einen Familienserver ideal: Große Uploads und Downloads blockieren sich nicht gegenseitig, und der Speicherbedarf bleibt gering.
+Der Server ist dann unter `http://<IP>:5000` erreichbar. Protokolle stehen in `logs/`. Ein Worker mit mehreren Threads ist für einen Familienserver ideal: Große Uploads und Downloads blockieren sich nicht gegenseitig, und der Speicherbedarf bleibt gering.
 
 Zum schnellen Ausprobieren geht auch der eingebaute Flask-Server:
 

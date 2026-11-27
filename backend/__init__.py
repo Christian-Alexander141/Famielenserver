@@ -7,6 +7,7 @@ Start zum Testen:   python3 server.py
 from __future__ import annotations
 
 import logging
+import logging.handlers
 import os
 import secrets
 from dataclasses import dataclass
@@ -61,11 +62,38 @@ def _secret_key(settings: Settings, storage: Storage) -> str:
     return key
 
 
+LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
+
+
+def _setup_logging(log_dir: Path | None) -> None:
+    """Konsole plus rotierende Datei logs/familienserver.log (max. 5 × 1 MB –
+    schont die SD-Karte des Raspberry Pi)."""
+    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+    root = logging.getLogger()
+    for handler in list(root.handlers):
+        if getattr(handler, "_familienserver", False):  # bei erneutem create_app nicht doppelt
+            root.removeHandler(handler)
+            handler.close()
+    if log_dir is None:
+        return
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        handler = logging.handlers.RotatingFileHandler(
+            log_dir / "familienserver.log", maxBytes=1024 * 1024, backupCount=5, encoding="utf-8"
+        )
+    except OSError as exc:
+        log.warning("Log-Ordner %s nicht beschreibbar (%s) – protokolliere nur auf der Konsole.", log_dir, exc)
+        return
+    handler.setFormatter(logging.Formatter(LOG_FORMAT))
+    handler._familienserver = True  # type: ignore[attr-defined]
+    root.addHandler(handler)
+
+
 def create_app(overrides: dict | None = None) -> Flask:
     load_dotenv(REPO_ROOT / ".env")  # vorhandene Umgebungsvariablen haben Vorrang
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
     settings = Settings.from_env(overrides)
+    _setup_logging(settings.log_dir)
     if not settings.password:
         raise SystemExit(
             "Kein Passwort gesetzt.\n"

@@ -9,7 +9,9 @@
 # Änderungen. Die neuesten [Anzahl] Sicherungen bleiben erhalten (Standard: 14).
 #
 # Täglich um 3 Uhr automatisch (crontab -e):
-#   0 3 * * * /pfad/zum/Famielenserver/backup.sh /media/usb/familienserver-backup >> /tmp/familienserver-backup.log 2>&1
+#   0 3 * * * /pfad/zum/Famielenserver/backup.sh /media/usb/familienserver-backup
+#
+# Jeder Lauf wird zusätzlich in logs/backup.log protokolliert.
 #
 # Das Ziel sollte auf einem ANDEREN Datenträger liegen (USB-Platte, NAS),
 # sonst schützt die Sicherung nicht vor einem Plattendefekt.
@@ -21,6 +23,16 @@ TARGET="${1:?Aufruf: ./backup.sh <Zielordner> [Anzahl der Sicherungen, Standard 
 KEEP="${2:-14}"
 [[ "$KEEP" =~ ^[0-9]+$ ]] && [ "$KEEP" -ge 1 ] || { echo "❌ Anzahl muss eine Zahl ≥ 1 sein" >&2; exit 1; }
 command -v rsync >/dev/null || { echo "❌ rsync fehlt: sudo apt install rsync" >&2; exit 1; }
+
+# Ausgabe zusätzlich in den Log-Ordner schreiben
+LOG_DIR="${FAMILIENSERVER_LOG_DIR:-}"
+if [ -z "$LOG_DIR" ] && [ -f .env ]; then
+  LOG_DIR="$(grep -E '^FAMILIENSERVER_LOG_DIR=' .env | tail -n1 | cut -d= -f2- | sed -e "s/^['\"]//" -e "s/['\"]$//")"
+fi
+LOG_DIR="${LOG_DIR:-$(pwd)/logs}"
+mkdir -p "$LOG_DIR"
+exec > >(tee -a "$LOG_DIR/backup.log") 2>&1
+echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
 
 # Datenordner wie der Server bestimmen: Umgebung → .env → Standard
 SOURCE="${FAMILIENSERVER_DATA_DIR:-}"

@@ -74,9 +74,21 @@ Alle Einstellungen stehen in der Datei `.env` im Projektordner (Vorlage: [.env.e
 | `FAMILIENSERVER_MAX_UPLOAD_MB` | `4096` | Maximale Größe pro Datei |
 | `FAMILIENSERVER_SECURE_COOKIES` | `0` | `1`, wenn der Server per HTTPS erreichbar ist |
 | `FAMILIENSERVER_TRUST_PROXY` | `0` | Anzahl vorgeschalteter Reverse Proxys (nginx, Caddy) |
+| `FAMILIENSERVER_LOG_DIR` | `./logs` | Ordner für Protokolle |
 | `PORT` (nur `start.sh`) | `5000` | Port des Servers |
 
 Nach einer Änderung den Server neu starten (`sudo systemctl restart familienserver` beim Systemdienst).
+
+### Protokolle
+
+Alle Protokolle landen im Ordner `logs/`. Er ist in `.gitignore` eingetragen und kommt nie ins Repository:
+
+| Datei | Inhalt |
+|---|---|
+| `familienserver.log` | Meldungen des Servers (Fehler, fehlgeschlagene Anmeldungen, …). Rotiert automatisch bei 1 MB, die letzten 5 Dateien bleiben erhalten |
+| `gunicorn.log` | Start, Stopp und Abstürze des Servers (`./start.sh start` und Systemdienst) |
+| `backup.log` | Jeder Lauf von `backup.sh` |
+| `frontend-dev.log` | Ausgabe des Next.js-Dev-Servers (nur `./start.sh dev`) |
 
 ---
 
@@ -88,7 +100,7 @@ Der Papierkorb ist **keine** Datensicherung. Für eine echte Sicherung gibt es `
 
 ```bash
 ./backup.sh /media/usb/familienserver-backup        # behält die letzten 14 Sicherungen
-crontab -e                                           # täglich um 3 Uhr:
+crontab -e                                           # täglich um 3 Uhr (Protokoll: logs/backup.log):
 # 0 3 * * * /home/pi/Famielenserver/backup.sh /media/usb/familienserver-backup
 ```
 
@@ -124,11 +136,13 @@ Famielenserver/
 │       ├── components/      Dateibrowser, Upload, Suche, Papierkorb, …
 │       └── lib/             API-Zugriff, Dateitypen, Upload-Logik
 ├── tests/                   Backend-Tests (pytest)
+├── pyproject.toml           Python-Abhängigkeiten und Projektdaten
 ├── server.py                Startpunkt für Entwicklung
 ├── start.sh                 Einrichten und Starten
 ├── backup.sh                Datensicherung
 ├── Dockerfile, docker-compose.yml
-└── data/                    Familiendateien (nicht im Git-Repository)
+├── data/                    Familiendateien (nicht im Git-Repository)
+└── logs/                    Protokolle (nicht im Git-Repository)
 ```
 
 ---
@@ -137,7 +151,7 @@ Famielenserver/
 
 ```bash
 ./start.sh dev                              # Backend + Next.js-Dev-Server mit Hot-Reload
-venv/bin/pip install -r requirements-dev.txt
+venv/bin/pip install -e ".[dev]"            # Abhängigkeiten aus pyproject.toml inkl. pytest
 venv/bin/python -m pytest                   # Backend-Tests
 cd familienserver && npm run lint           # Frontend prüfen
 ```

@@ -17,6 +17,18 @@ PORT="${PORT:-5000}"
 info() { echo "👉 $*"; }
 fail() { echo "❌ $*" >&2; exit 1; }
 
+# Wert aus Umgebung oder .env lesen (wie das Backend)
+env_value() {
+  local key="$1" value="${!1:-}"
+  if [ -z "$value" ] && [ -f .env ]; then
+    value="$(grep -E "^$key=" .env | tail -n1 | cut -d= -f2- | sed -e "s/^['\"]//" -e "s/['\"]$//")"
+  fi
+  echo "$value"
+}
+
+LOG_DIR="$(env_value FAMILIENSERVER_LOG_DIR)"
+LOG_DIR="${LOG_DIR:-$ROOT/logs}"
+
 # ------------------------------------------------------------ Voraussetzungen
 
 check_python() {
@@ -34,13 +46,13 @@ setup_venv() {
     info "Lege Python-Umgebung in ./venv an …"
     python3 -m venv "$VENV" || fail "venv konnte nicht angelegt werden. Installieren mit: sudo apt install python3-venv"
   fi
-  local stamp="$VENV/.requirements.sha"
+  local stamp="$VENV/.pyproject.sha"
   local current
-  current="$(sha256sum requirements.txt | cut -d' ' -f1)"
+  current="$(sha256sum pyproject.toml | cut -d' ' -f1)"
   if [ ! -f "$stamp" ] || [ "$(cat "$stamp")" != "$current" ]; then
-    info "Installiere Python-Pakete …"
+    info "Installiere Python-Pakete aus pyproject.toml …"
     "$VENV/bin/pip" install --quiet --upgrade pip
-    "$VENV/bin/pip" install --quiet -r requirements.txt
+    "$VENV/bin/pip" install --quiet -e .
     echo "$current" > "$stamp"
   fi
 }
@@ -120,9 +132,12 @@ start_server() {
   echo "✅ Familienserver läuft:"
   echo "   Auf diesem Gerät:  http://localhost:$PORT"
   [ -n "$ip" ] && echo "   Im Heimnetz:       http://$ip:$PORT"
+  echo "   Protokolle:        $LOG_DIR/"
   echo "   Beenden mit STRG+C"
   echo
-  exec "$VENV/bin/gunicorn" --workers 1 --threads 8 --bind "0.0.0.0:$PORT" "backend:create_app()"
+  mkdir -p "$LOG_DIR"
+  exec "$VENV/bin/gunicorn" --workers 1 --threads 8 --bind "0.0.0.0:$PORT" \
+    --error-logfile "$LOG_DIR/gunicorn.log" "backend:create_app()"
 }
 
 start_dev() {
@@ -131,6 +146,7 @@ start_dev() {
   check_node
   [ -d familienserver/node_modules ] || (cd familienserver && npm ci --no-audit --no-fund)
 
+  mkdir -p "$LOG_DIR"
   "$VENV/bin/python" server.py --debug --port "$PORT" &
   local backend_pid=$!
   # Beim Beenden (STRG+C) auch das Backend stoppen
@@ -139,8 +155,9 @@ start_dev() {
   echo
   echo "🧪 Entwicklungsmodus: http://localhost:3000  (Backend auf 127.0.0.1:$PORT)"
   echo "   Änderungen am Code werden automatisch neu geladen. Beenden mit STRG+C."
+  echo "   Protokolle: $LOG_DIR/ (familienserver.log, frontend-dev.log)"
   echo
-  (cd familienserver && FAMILIENSERVER_BACKEND_URL="http://127.0.0.1:$PORT" npm run dev)
+  (cd familienserver && FAMILIENSERVER_BACKEND_URL="http://127.0.0.1:$PORT" npm run dev 2>&1 | tee -a "$LOG_DIR/frontend-dev.log")
 }
 
 install_service() {
@@ -159,7 +176,8 @@ Wants=network-online.target
 [Service]
 User=$(id -un)
 WorkingDirectory=$ROOT
-ExecStart=$VENV/bin/gunicorn --workers 1 --threads 8 --bind 0.0.0.0:$PORT "backend:create_app()"
+ExecStartPre=/bin/mkdir -p $LOG_DIR
+ExecStart=$VENV/bin/gunicorn --workers 1 --threads 8 --bind 0.0.0.0:$PORT --error-logfile $LOG_DIR/gunicorn.log "backend:create_app()"
 Restart=on-failure
 RestartSec=5
 
@@ -168,7 +186,7 @@ WantedBy=multi-user.target
 EOF
   sudo systemctl daemon-reload
   sudo systemctl enable --now familienserver
-  info "Fertig. Status: sudo systemctl status familienserver · Logs: journalctl -u familienserver -f"
+  info "Fertig. Status: sudo systemctl status familienserver · Protokolle: $LOG_DIR/"
 }
 
 menu() {

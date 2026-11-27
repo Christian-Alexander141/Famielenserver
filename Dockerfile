@@ -14,19 +14,20 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     FAMILIENSERVER_DATA_DIR=/data \
-    FAMILIENSERVER_FRONTEND_DIR=/app/familienserver/out
+    FAMILIENSERVER_FRONTEND_DIR=/app/familienserver/out \
+    FAMILIENSERVER_LOG_DIR=/app/logs
 WORKDIR /app
 
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-
+# Editierbar installiert, damit das Backend aus /app geladen wird
+COPY pyproject.toml README.md ./
 COPY backend/ ./backend/
+RUN pip install --no-cache-dir -e .
 COPY server.py ./
 COPY --from=frontend /build/out ./familienserver/out
 
 # Nicht als root laufen. UID 1000 entspricht dem ersten Benutzer auf den meisten
 # Linux-Systemen (auch „pi“ auf dem Raspberry Pi) – so passen die Dateirechte in ./data.
-RUN useradd --uid 1000 --create-home familie && mkdir -p /data && chown familie:familie /data
+RUN useradd --uid 1000 --create-home familie && mkdir -p /data /app/logs && chown familie:familie /data /app/logs
 USER familie
 
 EXPOSE 5000

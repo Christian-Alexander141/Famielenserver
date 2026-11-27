@@ -66,7 +66,8 @@ Das richtet den Systemdienst `familienserver` ein, der beim Booten startet und n
 
 ```bash
 sudo systemctl status familienserver     # läuft er?
-journalctl -u familienserver -f          # Protokoll live ansehen
+tail -f logs/familienserver.log          # Protokoll live ansehen (alle Logs liegen in logs/)
+journalctl -u familienserver -f          # Meldungen von systemd selbst
 sudo systemctl restart familienserver    # nach Änderungen an .env oder Updates
 ```
 
@@ -124,7 +125,8 @@ Der Papierkorb schützt vor versehentlichem Löschen, aber nicht vor einer defek
 ./backup.sh /media/backup/familienserver
 crontab -e
 # täglich um 3 Uhr:
-0 3 * * * /home/pi/Famielenserver/backup.sh /media/backup/familienserver >> /tmp/familienserver-backup.log 2>&1
+0 3 * * * /home/pi/Famielenserver/backup.sh /media/backup/familienserver
+# Protokoll: ~/Famielenserver/logs/backup.log
 ```
 
 ## 8. Firewall (optional)

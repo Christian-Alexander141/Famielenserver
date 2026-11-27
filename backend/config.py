@@ -12,6 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATA_DIR = REPO_ROOT / "data"
 LEGACY_UPLOAD_DIR = REPO_ROOT / "familienserver" / "public" / "uploads"
 DEFAULT_FRONTEND_DIR = REPO_ROOT / "familienserver" / "out"
+DEFAULT_LOG_DIR = REPO_ROOT / "logs"
 
 log = logging.getLogger("familienserver")
 
@@ -43,6 +44,7 @@ class Settings:
     frontend_dir: Path = DEFAULT_FRONTEND_DIR
     secure_cookies: bool = False
     trust_proxy: int = 0
+    log_dir: Path | None = DEFAULT_LOG_DIR  # None = nur Konsole
 
     @classmethod
     def from_env(cls, overrides: dict | None = None) -> "Settings":
@@ -55,6 +57,7 @@ class Settings:
             frontend_dir=Path(os.environ.get("FAMILIENSERVER_FRONTEND_DIR") or DEFAULT_FRONTEND_DIR).expanduser(),
             secure_cookies=_bool("FAMILIENSERVER_SECURE_COOKIES"),
             trust_proxy=_int("FAMILIENSERVER_TRUST_PROXY", 0),
+            log_dir=Path(os.environ.get("FAMILIENSERVER_LOG_DIR") or DEFAULT_LOG_DIR).expanduser(),
         )
         for key, value in (overrides or {}).items():
             setattr(settings, key, value)

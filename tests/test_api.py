@@ -21,6 +21,7 @@ def app(tmp_path):
         "password": PASSWORD,
         "secret_key": "test-secret",
         "frontend_dir": frontend,
+        "log_dir": tmp_path / "logs",
     })
 
 
@@ -264,3 +265,11 @@ def test_internal_folder_is_recreated(app, client, data):
     shutil.rmtree(data / ".familienserver")
     assert upload(client, "nach-dem-loeschen.txt").status_code == 201
     assert client.get("/api/trash").status_code == 200
+
+
+def test_log_file_is_written(app, client, tmp_path):
+    client.post("/api/login", json={"password": "falsch"}, headers=H)
+    for handler in __import__("logging").getLogger().handlers:
+        handler.flush()
+    log = (tmp_path / "logs" / "familienserver.log").read_text()
+    assert "Fehlgeschlagene Anmeldung" in log
