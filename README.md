@@ -1,204 +1,243 @@
 # 🗂️ Familienserver
 
-Ein Familien-Server zum Hochladen und Verwalten von Dokumenten im Heimnetzwerk. Inklusive Chatbot für intelligente Dateisuche.
+**Die gemeinsame Ablage für die ganze Familie – im eigenen Heimnetz statt in der Cloud.**
 
-## 🚀 Funktionen
+Fotos, Rechnungen, Zeugnisse und Rezepte an einem Ort: hochladen, ordnen, wiederfinden. Der Familienserver läuft auf einem Raspberry Pi (ab 3B), einem alten Laptop oder per Docker. Bedient wird er im Browser, am PC genauso wie auf Handy oder Tablet.
 
-- **Datei-Upload**: Einfaches Hochladen von Dateien und Ordnern
-- **Dateiverwaltung**: Anzeigen, Herunterladen und Löschen von Dateien
-- **Systemmonitoring**: Echtzeit-Anzeige von CPU, RAM und Speicherauslastung
-- **Chatbot**: Intelligente Suche nach Dateien (in Arbeit)
-- **Dark Mode**: iOS-inspiriertes Design für beste Benutzererfahrung
+<p align="center">
+  <img src="docs/images/dateien.png" alt="Dateiliste mit Ordnern und Dateien" width="49%">
+  <img src="docs/images/galerie.png" alt="Kachelansicht mit Vorschaubildern" width="49%">
+</p>
 
-## 📦 Projektstruktur
-
-```
-FamilienServer/
-├── familienserver/          # Next.js Frontend
-│   ├── app/                 # Next.js App Router
-│   │   ├── components/      # React Komponenten
-│   │   ├── lib/             # Hilfsfunktionen
-│   │   ├── api/             # API Routes (für Next.js API)
-│   ├── public/              # Statische Dateien & Uploads
-│   │   └── uploads/         # Hochgeladene Dateien
-│   ├── package.json
-│   └── ...
-├── server.py                # Flask Backend Server
-├── requirements.txt         # Python Abhängigkeiten
-└── README.md
-```
-
-## 🛠️ Installation
-
-### Voraussetzungen
-
-- Node.js 18+ 
-- Python 3.8+
-- npm oder yarn
-
-### Frontend (Next.js) einrichten
-
-```bash
-cd familienserver
-npm install
-```
-
-### Backend (Flask) einrichten
-
-```bash
-# Erstelle virtuelle Umgebung
-python -m venv venv
-
-# Aktiviere virtuelle Umgebung
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-
-# Installiere Abhängigkeiten
-pip install -r requirements.txt
-```
-
-## 🏃‍♂️ Starten
-
-### Entwicklungsumgebung
-
-**Terminal 1: Backend starten**
-```bash
-python server.py
-```
-Der Server läuft unter `http://localhost:5000`
-
-**Terminal 2: Frontend starten**
-```bash
-cd familienserver
-npm run dev
-```
-Das Frontend läuft unter `http://localhost:3000`
-
-### Produktion
-
-**Backend:**
-```bash
-python server.py --host 0.0.0.0 --port 5000
-```
-
-**Frontend:**
-```bash
-cd familienserver
-npm run build
-npm run start
-```
-
-## 🌐 Netzwerk-Konfiguration
-
-Für die Nutzung im Heimnetzwerk:
-
-1. **Backend URL anpassen**:
-   - In `familienserver/app/lib/config.ts`
-   - Oder Umgebungsvariable setzen: `NEXT_PUBLIC_API_BASE_URL=http://IHRE_IP:5000`
-
-2. **Firewall öffnen**: Erlaube Port 5000 (Backend) und 3000 (Frontend)
-
-3. **Auf anderen Geräten zugreifen**: 
-   - Öffnen Sie `http://IHRE_SERVER_IP:3000` im Browser
-
-## 📁 Datei-Upload
-
-- Einzelne Dateien oder ganze Ordner hochladen
-- Alle Dateitypen sind erlaubt
-- Maximal 1GB pro Datei (konfigurierbar)
-- Dateien werden in `familienserver/public/uploads/` gespeichert
-
-## 🤖 Chatbot
-
-Der Chatbot kann nach Dateien suchen:
-
-- **Beispiele:**
-  - "Suche nach Urlaub"
-  - "Zeige mir alle PDFs"
-  - "Finde Rechnungen"
-
-- **Funktionen:**
-  - Dateinamen-Suche
-  - Ergebnisvorschau
-  - Direkter Download-Link
-
-## 🎨 Design
-
-- iOS Dark Mode Design
-- Responsive Layout für alle Geräte
-- Touch-optimiert für Tablets und Smartphones
-- Barrierefreiheit (WCAG)
-
-## 🔧 Konfiguration
-
-### Backend-Einstellungen
-
-In `server.py` können Sie folgende Parameter anpassen:
-
-```python
-UPLOAD_FOLDER = Path('familienserver/public/uploads')  # Upload-Ordner
-MAX_CONTENT_LENGTH = 1024 * 1024 * 1024  # Max. Dateigröße (1GB)
-```
-
-### Frontend-Einstellungen
-
-In `familienserver/.env.local`:
-
-```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5000
-NEXT_PUBLIC_UPLOAD_FOLDER=public/uploads
-```
-
-## 📊 API-Endpunkte
-
-| Methode | Endpunkt | Beschreibung |
-|---------|----------|--------------|
-| GET | `/api/files` | Liste aller Dateien |
-| POST | `/api/upload` | Datei hochladen |
-| GET | `/api/download/<filename>` | Datei herunterladen |
-| DELETE | `/api/delete/<filename>` | Datei löschen |
-| GET | `/api/systeminfo` | Systeminformationen |
-| POST | `/api/chat` | Chatbot-Suche |
-
-## 🛡️ Sicherheit
-
-- **Achtung**: Dieser Server ist für den privaten Gebrauch im Heimnetzwerk gedacht
-- **Nicht für das öffentliche Internet freigeben**
-- **Keine Authentifizierung** in der Standardkonfiguration
-- Für sichere Nutzung:
-  - Firewall-Konfiguration
-  - VPN für externen Zugriff
-  - Authentifizierung hinzufügen (z.B. Basic Auth, JWT)
-
-## 🚧 Roadmap
-
-- [x] Next.js Migration
-- [x] React Komponenten
-- [x] Datei-Upload/Download
-- [x] Systemmonitoring
-- [x] Grundlegender Chatbot
-- [ ] Benutzerauthentifizierung
-- [ ] Dateiversionen
-- [ ] Datei-Vorschau (Bilder, PDFs)
-- [ ] Verschlüsselung
-- [ ] Backup-Funktionen
-- [ ] Fortgeschrittene Suchfunktionen
-- [ ] Sprachsteuerung
-
-## 🤝 Mitwirken
-
-Beiträge sind willkommen! Bitte erstellen Sie einen Pull Request.
-
-## 📜 Lizenz
-
-Dieses Projekt ist für den persönlichen Gebrauch gedacht.
-
-## 📞 Support
-
-Bei Fragen oder Problemen öffnen Sie bitte ein Issue auf GitHub.
+**Inhalt:** [Funktionen](#-funktionen) · [Schnellstart](#-schnellstart) · [Bedienung](#-bedienung) · [Betrieb](#-betrieb) · [Umstieg von Version 1](#-umstieg-von-version-1) · [Entwicklung](#-entwicklung) · [Hilfe](#-hilfe)
 
 ---
 
-Erstellt mit ❤️ für Familien
+## ✨ Funktionen
+
+| | |
+|---|---|
+| 📤 **Hochladen** | Dateien oder ganze Ordner, per Knopf oder Drag & Drop. Nichts wird überschrieben, ein zweites „foto.jpg“ heißt automatisch „foto (1).jpg“ |
+| 📁 **Ordnen** | Ordner anlegen, umbenennen, verschieben (per Klick oder durch Ziehen), mehrere Dateien auf einmal bearbeiten |
+| 🖼️ **Ansehen** | Liste oder Kacheln mit Vorschaubildern. Fotos als Galerie, dazu Videos, Musik, PDFs und Texte direkt im Browser |
+| 🔍 **Finden** | Suche in allen Ordnern mit normalen Sätzen: „Zeige mir alle PDFs von 2024“, „Bilder vom Urlaub“ |
+| 🗑️ **Papierkorb** | Gelöschtes lässt sich 30 Tage lang wiederherstellen |
+| ⬇️ **Herunterladen** | Einzelne Dateien, ganze Ordner oder eine Auswahl als ZIP, auch sehr große Ordner |
+| 🔒 **Geschützt** | Gemeinsames Familien-Passwort, alles bleibt im Heimnetz |
+| 💾 **Gesichert** | Skript für automatische Sicherungen auf eine zweite Festplatte |
+| 📊 **Überblick** | Auslastung, freier Speicherplatz und CPU-Temperatur des Servers |
+
+---
+
+## ⚡ Schnellstart
+
+**Du brauchst:** Linux (z. B. Raspberry Pi OS), **Python 3.9+** und **Node.js 20+**. Node wird nur zum einmaligen Bauen der Oberfläche gebraucht. Auf dem Raspberry Pi geht es auch ohne, siehe [RASPBERRY_PI.md](RASPBERRY_PI.md).
+
+```bash
+git clone https://github.com/Christian-Alexander141/Famielenserver.git
+cd Famielenserver
+./start.sh start
+```
+
+Beim ersten Start fragt das Skript nach einem **Familien-Passwort** (mindestens 8 Zeichen). Danach richtet es alles Nötige ein und zeigt die Adresse an, unter der der Server im Heimnetz erreichbar ist, z. B. `http://192.168.178.50:5000`.
+
+Damit der Server nach jedem Neustart automatisch läuft:
+
+```bash
+./start.sh service
+```
+
+> 🍓 Ausführliche Anleitung für den Raspberry Pi (feste IP, USB-Festplatte, Firewall): **[RASPBERRY_PI.md](RASPBERRY_PI.md)**
+> 🐳 Mit Docker: **[DOCKER.md](DOCKER.md)** · 🔧 Schritt für Schritt ohne Skript: **[ohne_docker.md](ohne_docker.md)**
+
+---
+
+## 👪 Bedienung
+
+Diesen Abschnitt kannst du an die Familie weitergeben.
+
+<img src="docs/images/handy.png" alt="Familienserver auf dem Handy" width="230" align="right">
+
+1. **Öffnen:** Im Browser die Adresse des Servers aufrufen und das Familien-Passwort eingeben. Die Anmeldung bleibt 30 Tage gespeichert.
+   *Tipp fürs Handy:* Im Browsermenü „Zum Startbildschirm hinzufügen“ wählen. Dann gibt es ein eigenes App-Symbol.
+2. **Hochladen:** In den gewünschten Ordner wechseln und auf **Dateien auswählen** oder **Ordner auswählen** tippen. Am PC kannst du Dateien einfach ins Fenster ziehen.
+3. **Ordnen:** Mit 📦 verschiebst du eine Datei in einen anderen Ordner, mit ✏️ benennst du sie um. Am PC geht es auch durch Ziehen auf einen Ordner oder auf die Pfadleiste oben. Für mehrere Dateien vorne die Häkchen setzen.
+4. **Ansehen:** Ein Tipp auf ein Foto, Video oder PDF öffnet die Vorschau. In der Galerie blätterst du mit ← → weiter. Die Ansicht **Kacheln** zeigt Vorschaubilder.
+5. **Finden:** Unter **Dateisuche** einfach fragen, z. B. „Rechnungen März“ oder „Fotos vom Geburtstag“.
+6. **Löschen und zurückholen:** 🗑️ verschiebt in den **Papierkorb** (unten auf der Seite). Dort lässt sich alles 30 Tage lang mit ↩️ **Wiederherstellen** zurückholen.
+
+Die Adresse in der Browserzeile zeigt den geöffneten Ordner (z. B. `…/#/Urlaub 2024`). Lesezeichen und die Zurück-Taste funktionieren deshalb wie gewohnt.
+
+<br clear="right">
+
+---
+
+## 🧰 Betrieb
+
+### Befehle
+
+| Befehl | Wirkung |
+|---|---|
+| `./start.sh` | Menü mit allen Optionen |
+| `./start.sh start` | Server starten |
+| `./start.sh service` | Als Systemdienst einrichten (Autostart beim Booten) |
+| `./start.sh password` | Familien-Passwort ändern. Alle Geräte müssen sich danach neu anmelden |
+| `./start.sh build` | Oberfläche neu bauen (nach Updates) |
+| `./backup.sh <Ziel>` | Datensicherung, siehe unten |
+
+Beim Systemdienst: `sudo systemctl status familienserver` zeigt den Zustand, `sudo systemctl restart familienserver` startet ihn neu.
+
+### Einstellungen
+
+Alle Einstellungen stehen in der Datei `.env` im Projektordner. Eine kommentierte Vorlage ist [.env.example](.env.example). Nach Änderungen den Server neu starten.
+
+| Variable | Standard | Bedeutung |
+|---|---|---|
+| `FAMILIENSERVER_PASSWORD` | – (Pflicht) | Gemeinsames Passwort, mindestens 8 Zeichen |
+| `FAMILIENSERVER_DATA_DIR` | `./data` | Wo die Dateien liegen, z. B. auf einer USB-Festplatte |
+| `FAMILIENSERVER_TRASH_DAYS` | `30` | Tage im Papierkorb (`0` = bis zum manuellen Leeren) |
+| `FAMILIENSERVER_MAX_UPLOAD_MB` | `4096` | Maximale Größe pro Datei |
+| `FAMILIENSERVER_LOG_DIR` | `./logs` | Ordner für Protokolle |
+| `FAMILIENSERVER_SECURE_COOKIES` | `0` | `1`, wenn der Server per HTTPS erreichbar ist |
+| `FAMILIENSERVER_TRUST_PROXY` | `0` | Anzahl vorgeschalteter Reverse Proxys (nginx, Caddy) |
+| `PORT` | `5000` | Port des Servers (nur für `start.sh`) |
+
+### Daten und Datensicherung
+
+Alle Familiendateien liegen im Datenordner (Standard `./data`). Der versteckte Unterordner `.familienserver/` enthält Papierkorb und Vorschaubilder. Der Datenordner ist **das Einzige, was gesichert werden muss**.
+
+Der Papierkorb schützt vor versehentlichem Löschen, aber nicht vor einer kaputten Festplatte. Dafür gibt es `backup.sh`. Es legt bei jedem Lauf eine datierte Kopie auf einem **anderen** Datenträger an und behält die letzten 14. Unveränderte Dateien werden nicht doppelt gespeichert, deshalb braucht jede weitere Sicherung nur Platz für das, was sich geändert hat.
+
+```bash
+./backup.sh /media/usb/familienserver-backup
+
+# täglich um 3 Uhr automatisch (crontab -e):
+0 3 * * * /home/pi/Famielenserver/backup.sh /media/usb/familienserver-backup
+```
+
+**Wiederherstellen:** Jede Sicherung ist ein normaler Ordner. Einfach die gewünschten Dateien aus z. B. `/media/usb/familienserver-backup/2026-11-27_0300/` zurückkopieren.
+
+### Protokolle
+
+Alle Protokolle landen im Ordner `logs/`. Er steht in der `.gitignore` und kommt nie ins Repository.
+
+| Datei | Inhalt |
+|---|---|
+| `familienserver.log` | Meldungen des Servers, z. B. Fehler und fehlgeschlagene Anmeldungen. Ab 1 MB beginnt eine neue Datei, die letzten 5 bleiben erhalten |
+| `gunicorn.log` | Start, Stopp und Abstürze des Servers |
+| `backup.log` | Jeder Lauf von `backup.sh` |
+| `frontend-dev.log` | Ausgabe des Next.js-Entwicklungsservers (nur `./start.sh dev`) |
+
+### Sicherheit
+
+- **Familien-Passwort:** Nach 10 Fehlversuchen wird die Anmeldung für 15 Minuten gesperrt.
+- **Eingaben werden geprüft:** Pfad-Tricks wie `../` werden blockiert, fremde Webseiten können keine Aktionen auslösen (CSRF-Schutz), und hochgeladene HTML- oder SVG-Dateien werden nie im Browser ausgeführt.
+- **Daten getrennt vom Programm:** Die Familiendateien liegen außerhalb des Programmordners und gelangen nie ins Git-Repository.
+- ⚠️ **Nicht per Portfreigabe ins Internet stellen.** Für den Zugriff von unterwegs ein VPN nutzen, z. B. WireGuard (in vielen Routern eingebaut) oder Tailscale.
+
+### Updates
+
+```bash
+git pull
+./start.sh build
+sudo systemctl restart familienserver
+```
+
+---
+
+## 🔄 Umstieg von Version 1
+
+| Was | Vorher | Jetzt |
+|---|---|---|
+| Adresse | `http://<IP>:3000` | `http://<IP>:5000`. Lesezeichen und Firewall-Regeln anpassen |
+| Anmeldung | keine | Familien-Passwort, `./start.sh` fragt beim ersten Start danach |
+| Dateien | `familienserver/public/uploads` | `data/`, wird beim ersten Start automatisch umgezogen |
+| Löschen | sofort endgültig | erst in den Papierkorb |
+| Dienste | Backend- und Frontend-Dienst | ein Dienst, siehe [RASPBERRY_PI.md](RASPBERRY_PI.md#autostart) |
+| Python-Pakete | `requirements.txt` | `pyproject.toml` (installiert `start.sh` automatisch) |
+| `NEXT_PUBLIC_API_BASE_URL` | nötig | entfällt |
+
+---
+
+## 💻 Entwicklung
+
+```bash
+./start.sh dev                          # Backend + Oberfläche mit automatischem Neuladen → http://localhost:3000
+venv/bin/pip install -e ".[dev]"        # Abhängigkeiten inkl. pytest (aus pyproject.toml)
+venv/bin/python -m pytest               # Backend-Tests
+cd familienserver && npm run lint       # Oberfläche prüfen
+```
+
+Bei jedem Push prüft die [CI](.github/workflows/ci.yml) Tests, Typen, Lint und Build.
+
+**Aufbau:** Die Oberfläche (Next.js) wird als statische Seite nach `familienserver/out` gebaut. Im Betrieb liefert das Flask-Backend sie zusammen mit der API aus. Das ist ein Prozess auf einem Port, und auf dem Pi läuft kein Node.js mit. Im Entwicklungsmodus leitet Next.js `/api/*` an das Backend auf `127.0.0.1:5000` weiter.
+
+```
+Famielenserver/
+├── backend/            Flask-Backend
+│   ├── __init__.py       App, Fehlerbehandlung, Protokolle, Auslieferung der Oberfläche
+│   ├── api.py            REST-API unter /api
+│   ├── auth.py           Anmeldung, CSRF-Schutz, Sperre bei Fehlversuchen
+│   ├── storage.py        Dateizugriff, Pfadprüfung, Papierkorb
+│   ├── search.py         Dateisuche
+│   ├── system.py         CPU/RAM/Speicher/Temperatur
+│   ├── thumbnails.py     Vorschaubilder (Pillow)
+│   └── zipstream.py      ZIP-Download ohne Zwischenspeicher
+├── familienserver/     Next.js-Oberfläche (app/page.tsx, app/components/, app/lib/)
+├── tests/              Backend-Tests (pytest)
+├── docs/images/        Screenshots
+├── pyproject.toml      Python-Abhängigkeiten
+├── start.sh            Einrichten und Starten
+├── backup.sh           Datensicherung
+├── Dockerfile, docker-compose.yml
+├── data/               Familiendateien    ┐
+└── logs/               Protokolle         ┘ nicht im Repository
+```
+
+<details>
+<summary><strong>API-Überblick</strong></summary>
+
+Alle Endpunkte außer `/api/health`, `/api/session` und `/api/login` erfordern eine Anmeldung. Ändernde Anfragen (POST) brauchen den Header `X-Familienserver: 1`.
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| GET | `/api/files?path=` | Ordnerinhalt |
+| POST | `/api/upload?dir=&name=` | Datei hochladen (Inhalt als Body, `name` darf Unterordner enthalten) |
+| GET | `/api/download?path=[&inline=1]` | Datei herunterladen bzw. anzeigen |
+| GET | `/api/zip?path=&path=…` | Ordner oder Auswahl als ZIP |
+| GET | `/api/thumbnail?path=` | Vorschaubild |
+| POST | `/api/mkdir` `{parent, name}` | Ordner anlegen |
+| POST | `/api/rename` `{path, name}` | Umbenennen |
+| POST | `/api/move` `{path, destination}` | Verschieben (`destination` = Zielordner) |
+| POST | `/api/delete` `{path}` | In den Papierkorb |
+| GET | `/api/trash` | Inhalt des Papierkorbs |
+| POST | `/api/trash/restore`, `/api/trash/delete` `{id}`, `/api/trash/empty` | Wiederherstellen, endgültig löschen, leeren |
+| POST | `/api/search` `{query}` | Suche |
+| GET | `/api/system` | Systemauslastung |
+
+</details>
+
+---
+
+## 🆘 Hilfe
+
+| Problem | Lösung |
+|---|---|
+| Seite lädt nicht von anderen Geräten | Läuft der Server (`sudo systemctl status familienserver`)? Richtige IP und Port 5000? Firewall? |
+| „Kein Passwort gesetzt“ | `./start.sh password` |
+| „Das Frontend ist noch nicht gebaut“ | `./start.sh build` |
+| Passwort vergessen | `./start.sh password` setzt ein neues |
+| Upload bricht bei großen Dateien ab | `FAMILIENSERVER_MAX_UPLOAD_MB` erhöhen, freien Speicherplatz prüfen |
+| Was ist schiefgelaufen? | `logs/familienserver.log` und `logs/gunicorn.log` ansehen |
+
+Weitere Lösungen stehen in [RASPBERRY_PI.md](RASPBERRY_PI.md#-häufige-probleme) und [ohne_docker.md](ohne_docker.md#häufige-probleme).
+
+---
+
+## 🤝 Mitwirken
+
+Fehler und Ideen gerne als Issue, Verbesserungen als Pull Request.
+
+## 📜 Lizenz
+
+Dieses Projekt ist für den **persönlichen Gebrauch** gedacht.

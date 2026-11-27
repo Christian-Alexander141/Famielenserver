@@ -1,245 +1,145 @@
 "use client";
 
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
-import axios from "axios";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { apiPost, downloadUrl, errorMessage, startDownload, zipUrl } from "../lib/api";
+import { KIND_ICON, fileKind, formatSize, parentPath, type FileItem } from "../lib/files";
 
-interface FileResult {
-  name: string;
-  path: string;
-  size: number;
-  download_url: string;
+interface SearchResponse {
+  results: FileItem[];
+  count: number;
+  truncated: boolean;
+  hint: string;
 }
 
 interface ChatMessage {
-  id: string;
+  id: number;
   sender: "user" | "bot";
   text: string;
-  results?: FileResult[];
-  timestamp: Date;
+  results?: FileItem[];
 }
 
 interface ChatInterfaceProps {
-  apiBaseUrl: string;
-  devMode: boolean;
+  /** Öffnet einen Ordner im Dateibrowser */
+  onOpenFolder: (path: string) => void;
 }
 
-export default function ChatInterface({ apiBaseUrl, devMode }: ChatInterfaceProps) {
+const EXAMPLES = ["Urlaub", "PDFs von 2024", "Bilder vom Geburtstag", "Videos"];
+
+export default function ChatInterface({ onOpenFolder }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputValue, setInputValue] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const nextId = useRef(1);
+  const end = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [messages, loading]);
 
-  // Format file size
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
+  const add = (message: Omit<ChatMessage, "id">) => setMessages((list) => [...list, { ...message, id: nextId.current++ }]);
 
-  // Handle sending message
-  const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
-
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      sender: "user",
-      text: inputValue.trim(),
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue("");
-    setError(null);
-    setIsLoading(true);
-
+  const ask = async (query: string) => {
+    if (!query.trim() || loading) return;
+    add({ sender: "user", text: query });
+    setInput("");
+    setLoading(true);
     try {
-      if (devMode) {
-        // Mock response in dev mode
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        
-        const mockResults: FileResult[] = [
-          {
-            name: "Urlaub_2024.jpg",
-            path: "Bilder/Urlaub_2024.jpg",
-            size: 2048576,
-            download_url: "/api/download/Bilder/Urlaub_2024.jpg",
-          },
-          {
-            name: "Rechnung.pdf",
-            path: "Dokumente/Rechnung.pdf",
-            size: 524288,
-            download_url: "/api/download/Dokumente/Rechnung.pdf",
-          },
-        ];
-
-        const botMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          sender: "bot",
-          text: `Ich habe ${mockResults.length} Dateien zu Ihrer Suche "${inputValue.trim()}" gefunden:`,
-          results: mockResults,
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, botMessage]);
-      } else {
-        // Real API call
-        const response = await axios.post(`${apiBaseUrl}/api/chat`, {
-          query: inputValue.trim(),
-        });
-
-        const data = response.data;
-        const results: FileResult[] = data.results || [];
-
-        let botText = "";
-        if (results.length > 0) {
-          botText = `Ich habe ${results.length} Dateien zu Ihrer Suche "${inputValue.trim()}" gefunden:`;
-        } else {
-          botText = `Keine Dateien zu "${inputValue.trim()}" gefunden.`;
-        }
-
-        const botMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          sender: "bot",
-          text: botText,
-          results: results,
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, botMessage]);
-      }
+      const res = await apiPost<SearchResponse>("/api/search", { query });
+      let text: string;
+      if (res.count === 0) text = res.hint || `Keine Treffer für „${query}“.`;
+      else if (res.truncated) text = `${res.count} Treffer – hier die ersten ${res.results.length}:`;
+      else text = res.count === 1 ? "Ich habe 1 Treffer gefunden:" : `Ich habe ${res.count} Treffer gefunden:`;
+      add({ sender: "bot", text, results: res.results });
     } catch (err) {
-      console.error("Chat API Fehler:", err);
-      setError("Fehler bei der Suche. Bitte versuchen Sie es erneut.");
-      const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        sender: "bot",
-        text: "Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      add({ sender: "bot", text: `❌ ${errorMessage(err)}` });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  // Handle key down (Enter to send)
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  // Handle download from chat results
-  const handleDownload = (downloadUrl: string) => {
-    window.open(downloadUrl, "_blank");
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    ask(input.trim());
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="border border-gray-700 rounded-lg p-4 flex-1 min-h-[300px] max-h-[500px] overflow-y-auto">
+    <div className="flex flex-col gap-3">
+      <div className="max-h-[500px] min-h-[240px] overflow-y-auto rounded-xl border border-gray-700 p-4">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
-            <p>👋 Hallo! Ich bin Ihr Familienserver-Chatbot.</p>
-            <p className="mt-2">Fragen Sie mich nach Dateien, und ich helfe Ihnen, sie zu finden.</p>
-            <p className="mt-2 text-sm">Beispiel: "Suche nach Urlaub" oder "Zeige mir alle PDFs"</p>
+          <div className="py-6 text-center text-gray-400">
+            <p>👋 Hallo! Ich suche in allen Ordnern nach Dateien.</p>
+            <p className="mt-1 text-sm">Frag z. B. nach einem Namen, einem Jahr oder einer Dateiart:</p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              {EXAMPLES.map((example) => (
+                <button key={example} onClick={() => ask(example)} className="rounded-full bg-gray-700 px-3 py-1 text-sm hover:bg-gray-600">
+                  {example}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                    message.sender === "user"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-700 text-white"
-                  }`}
-                >
+              <div key={message.id} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[90%] rounded-2xl px-4 py-2 ${message.sender === "user" ? "bg-blue-600" : "bg-gray-700"}`}>
                   <p className="whitespace-pre-wrap">{message.text}</p>
-                  
-                  {/* File results */}
                   {message.results && message.results.length > 0 && (
-                    <div className="mt-3 space-y-2">
-                      <p className="text-xs text-gray-400 mb-2">Gefundene Dateien:</p>
-                      {message.results.map((file) => (
-                        <div
-                          key={file.path}
-                          className="bg-gray-800 rounded-lg p-2 text-xs"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span>📄</span>
-                            <div className="flex-1">
-                              <p className="font-medium truncate">{file.name}</p>
-                              <p className="text-gray-500 text-xs">{formatFileSize(file.size)}</p>
-                            </div>
+                    <ul className="mt-2 space-y-1">
+                      {message.results.map((item) => {
+                        const isDir = item.type === "directory";
+                        const folder = isDir ? item.path : parentPath(item.path);
+                        return (
+                          <li key={item.path} className="flex items-center gap-2 rounded-lg bg-gray-800 px-2 py-1.5 text-sm">
+                            <span aria-hidden>{KIND_ICON[fileKind(item)]}</span>
                             <button
-                              onClick={() => handleDownload(file.download_url)}
-                              className="text-blue-400 hover:text-blue-300"
+                              onClick={() => onOpenFolder(folder)}
+                              className="min-w-0 flex-1 text-left"
+                              title={isDir ? "Ordner öffnen" : "Ordner mit dieser Datei öffnen"}
+                            >
+                              <span className="block truncate font-medium">{item.name}</span>
+                              <span className="block truncate text-xs text-gray-400">
+                                /{folder}
+                                {!isDir && ` · ${formatSize(item.size)}`}
+                              </span>
+                            </button>
+                            <button
+                              onClick={() => startDownload(isDir ? zipUrl([item.path]) : downloadUrl(item.path))}
+                              className="icon-button"
+                              title="Herunterladen"
                             >
                               ⬇️
                             </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   )}
-
-                  <p className="text-xs text-gray-500 mt-1 text-right">
-                    {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </p>
                 </div>
               </div>
             ))}
-          
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-gray-700 rounded-2xl px-4 py-2 max-w-[80%]">
-                <div className="flex items-center gap-2">
-                  <div className="loading-spinner"></div>
-                  <span>Denke nach...</span>
-                </div>
+            {loading && (
+              <div className="flex items-center gap-2 text-gray-400">
+                <div className="loading-spinner" /> Suche …
               </div>
-            </div>
-          )}
-          
-          <div ref={messagesEndRef} />
-        </div>
-      )}
+            )}
+            <div ref={end} />
+          </div>
+        )}
+      </div>
 
-      {error && (
-        <div className="text-red-500 text-sm text-center">{error}</div>
-      )}
+      <form onSubmit={submit} className="flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Wonach suchst du? z. B. „Rechnungen März“"
+          className="ios-input flex-1"
+          aria-label="Suche"
+        />
+        <button type="submit" className="ios-button" disabled={!input.trim() || loading}>
+          Suchen
+        </button>
+      </form>
     </div>
-
-    <div className="flex gap-2">
-      <input
-        type="text"
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={devMode ? "Suche nach Dateien (Demo-Modus)..." : "Suche nach Dateien..."}
-        className="ios-input flex-1"
-        disabled={isLoading}
-      />
-      <button
-        onClick={handleSendMessage}
-        className="ios-button"
-        disabled={!inputValue.trim() || isLoading}
-      >
-        {isLoading ? "..." : "Senden"}
-      </button>
-    </div>
-  </div>
   );
 }

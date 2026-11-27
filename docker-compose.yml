@@ -1,37 +1,23 @@
-version: '3.8'
+# Start:   mkdir -p data logs && docker compose up -d --build
+# Danach:  http://<IP-des-Servers>:5000
+#
+# Das Passwort steht in der Datei .env (siehe .env.example).
 
 services:
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
-    container_name: familienserver-backend
+  familienserver:
+    build: .
+    container_name: familienserver
     restart: unless-stopped
     ports:
       - "5000:5000"
     volumes:
-      - ./familienserver/public/uploads:/app/familienserver/public/uploads
-    networks:
-      - familienserver-network
-
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    container_name: familienserver-frontend
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./familienserver/public/uploads:/app/public/uploads
+      # Alle Familiendateien inkl. Papierkorb – hier liegt alles, was gesichert werden muss.
+      - ./data:/data
+      # Protokolle (familienserver.log, rotierend)
+      - ./logs:/app/logs
     environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_BASE_URL=http://backend:5000
-    depends_on:
-      - backend
-    networks:
-      - familienserver-network
-
-networks:
-  familienserver-network:
-    driver: bridge
+      FAMILIENSERVER_PASSWORD: ${FAMILIENSERVER_PASSWORD:?Bitte FAMILIENSERVER_PASSWORD in der Datei .env setzen}
+      FAMILIENSERVER_TRASH_DAYS: ${FAMILIENSERVER_TRASH_DAYS:-30}
+      FAMILIENSERVER_MAX_UPLOAD_MB: ${FAMILIENSERVER_MAX_UPLOAD_MB:-4096}
+      FAMILIENSERVER_SECURE_COOKIES: ${FAMILIENSERVER_SECURE_COOKIES:-0}
+      FAMILIENSERVER_TRUST_PROXY: ${FAMILIENSERVER_TRUST_PROXY:-0}

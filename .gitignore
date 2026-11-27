@@ -1,88 +1,45 @@
-# Dependencies
-/node_modules
-/.pnp
-.pnp.js
-.yarn/install-state.gz
+# ---------------------------------------------------------------- Daten
+# Hochgeladene Familiendateien gehören NIE ins Git-Repository.
+/data/
+familienserver/public/uploads/
 
-# Testing
-/coverage
+# Protokolle – landen alle im Ordner logs/
+/logs/
+*.log
 
-# Next.js
-/.next/
-/out/
-
-# Production
-/build
-
-# Misc
-.DS_Store
-*.pem
-
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Local env files
+# Zugangsdaten und lokale Einstellungen
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 
-# Vercel
-.vercel
-
-# TypeScript
+# ------------------------------------------------------------- Frontend
+node_modules/
+familienserver/.next/
+familienserver/out/
 *.tsbuildinfo
 next-env.d.ts
+npm-debug.log*
+.vercel
 
-# Python
+# --------------------------------------------------------------- Python
+# Bewusst nur im Wurzelverzeichnis – ein allgemeines „lib/“ hätte auch
+# familienserver/app/lib/ ignoriert.
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
+/build/
+/dist/
+/lib/
+/lib64/
 *.egg-info/
-.installed.cfg
-*.egg
+.pytest_cache/
+/venv/
+/.venv/
+/env/
 
-# Virtual environment
-venv/
-ENV/
-env/
-.venv/
-
-# Flask
-instance/
-.webassets-cache
-
-# IDE
+# ------------------------------------------------------------ Sonstiges
+*.tmp
+.DS_Store
 .idea/
 .vscode/
 *.swp
-*.swo
-
-# Uploads (keep the folder but ignore contents)
-/public/uploads/*
-!/public/uploads/
-
-# Logs
-*.log
-logs/
-
-# Temporary files
-*.tmp
-*.temp
+*.pem

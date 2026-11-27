@@ -1,0 +1,16 @@
+.git
+.env
+.env.*
+data/
+*.egg-info
+venv/
+.venv/
+**/__pycache__
+.pytest_cache
+tests/
+familienserver/node_modules
+familienserver/.next
+familienserver/out
+familienserver/public/uploads
+logs/
+*.log
