@@ -2,8 +2,23 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Dialog from "./Dialog";
+import Icon from "./Icon";
+import { ErrorText } from "./ui";
 import { apiGet, errorMessage } from "../lib/api";
 import { isSameOrInside, nameProblem, parentPath, type FileItem, type Listing } from "../lib/files";
+
+function DialogActions({ children }: { children: React.ReactNode }) {
+  return <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">{children}</div>;
+}
+
+function BusyLabel({ busy, label }: { busy: boolean; label: string }) {
+  return (
+    <>
+      {busy && <span className="spinner size-4" />}
+      {label}
+    </>
+  );
+}
 
 // ------------------------------------------------------------ Name eingeben
 
@@ -59,19 +74,20 @@ export function NameDialog({ title, initial = "", confirmLabel, selectStem, onSu
             setName(e.target.value);
             setError(null);
           }}
-          className="ios-input mb-3"
+          className="input"
           aria-label="Name"
+          aria-invalid={!!error}
           maxLength={200}
         />
-        {error && <p className="mb-3 text-sm text-red-400">❌ {error}</p>}
-        <div className="flex justify-end gap-3">
-          <button type="button" onClick={onClose} className="ios-button ios-button-secondary">
+        {error && <ErrorText className="mt-3">{error}</ErrorText>}
+        <DialogActions>
+          <button type="button" onClick={onClose} className="btn btn-secondary">
             Abbrechen
           </button>
-          <button type="submit" className="ios-button" disabled={busy}>
-            {busy ? "…" : confirmLabel}
+          <button type="submit" className="btn btn-primary" disabled={busy}>
+            <BusyLabel busy={busy} label={confirmLabel} />
           </button>
-        </div>
+        </DialogActions>
       </form>
     </Dialog>
   );
@@ -105,21 +121,23 @@ export function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm,
 
   return (
     <Dialog title={title} onClose={onClose}>
-      <div className="mb-5 text-sm text-gray-300">{message}</div>
-      {error && <p className="mb-3 text-sm text-red-400">❌ {error}</p>}
-      <div className="flex justify-end gap-3">
-        <button onClick={onClose} className="ios-button ios-button-secondary">
+      <div className="flex gap-3.5">
+        {danger && (
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-danger/12 text-danger-text">
+            <Icon name="trash" className="size-5" />
+          </span>
+        )}
+        <div className="min-w-0 pt-0.5 text-sm text-muted">{message}</div>
+      </div>
+      {error && <ErrorText className="mt-3">{error}</ErrorText>}
+      <DialogActions>
+        <button type="button" onClick={onClose} className="btn btn-secondary">
           Abbrechen
         </button>
-        <button
-          onClick={confirm}
-          className={`ios-button ${danger ? "bg-red-600 hover:bg-red-700" : ""}`}
-          disabled={busy}
-          autoFocus
-        >
-          {busy ? "…" : confirmLabel}
+        <button type="button" onClick={confirm} className={`btn ${danger ? "btn-danger" : "btn-primary"}`} disabled={busy} autoFocus>
+          <BusyLabel busy={busy} label={confirmLabel} />
         </button>
-      </div>
+      </DialogActions>
     </Dialog>
   );
 }
@@ -172,46 +190,56 @@ export function MoveDialog({ paths, startPath, onMove, onClose }: MoveDialogProp
 
   return (
     <Dialog title={`${label} verschieben`} onClose={onClose}>
-      <p className="mb-2 text-sm text-gray-400">
-        Zielordner: <span className="text-white">🏠 {browse ? `/${browse}` : "Hauptordner"}</span>
+      <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-subtle">Zielordner</p>
+      <p className="mb-3 flex min-w-0 items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-sm font-medium">
+        <Icon name={browse ? "folder" : "house"} className="text-muted" />
+        <span className="truncate">{browse ? `/${browse}` : "Hauptordner"}</span>
       </p>
-      <div className="mb-4 max-h-72 overflow-auto rounded-xl border border-gray-700">
+      <div className="max-h-72 overflow-auto rounded-xl border border-line p-1">
         {browse && (
           <button
+            type="button"
             onClick={() => setBrowse(parentPath(browse))}
-            className="flex w-full items-center gap-2 border-b border-gray-700 px-3 py-2 text-left hover:bg-gray-800"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-muted hover:bg-fg/5 hover:text-fg"
           >
-            ⬆️ <span className="text-gray-300">Übergeordneter Ordner</span>
+            <Icon name="corner-left-up" />
+            Übergeordneter Ordner
           </button>
         )}
         {loading ? (
-          <p className="px-3 py-3 text-sm text-gray-400">Lade Ordner …</p>
+          <p className="flex items-center gap-2 px-3 py-2.5 text-sm text-muted">
+            <span className="spinner size-4 text-accent-text" />
+            Lade Ordner …
+          </p>
         ) : listing.error ? (
-          <p className="px-3 py-3 text-sm text-red-400">❌ {listing.error}</p>
+          <ErrorText className="px-3 py-2.5">{listing.error}</ErrorText>
         ) : listing.folders.length === 0 ? (
-          <p className="px-3 py-3 text-sm italic text-gray-500">Keine Unterordner</p>
+          <p className="px-3 py-2.5 text-sm text-subtle">Keine Unterordner</p>
         ) : (
           listing.folders.map((folder) => (
             <button
+              type="button"
               key={folder.path}
               onClick={() => setBrowse(folder.path)}
               disabled={blocked(folder.path)}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-fg/5 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              📁 <span className="truncate">{folder.name}</span>
+              <Icon name="folder" className="text-amber-600 dark:text-amber-400" />
+              <span className="min-w-0 flex-1 truncate">{folder.name}</span>
+              <Icon name="chevron-right" className="text-subtle" />
             </button>
           ))
         )}
       </div>
-      {error && <p className="mb-3 text-sm text-red-400">❌ {error}</p>}
-      <div className="flex justify-end gap-3">
-        <button onClick={onClose} className="ios-button ios-button-secondary">
+      {error && <ErrorText className="mt-3">{error}</ErrorText>}
+      <DialogActions>
+        <button type="button" onClick={onClose} className="btn btn-secondary">
           Abbrechen
         </button>
-        <button onClick={move} className="ios-button" disabled={busy || loading || alreadyHere || blocked(browse)}>
-          {busy ? "…" : "Hierher verschieben"}
+        <button type="button" onClick={move} className="btn btn-primary" disabled={busy || loading || alreadyHere || blocked(browse)}>
+          <BusyLabel busy={busy} label="Hierher verschieben" />
         </button>
-      </div>
+      </DialogActions>
     </Dialog>
   );
 }

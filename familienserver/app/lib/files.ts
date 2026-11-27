@@ -47,20 +47,6 @@ register("spreadsheet", "xls xlsx ods numbers");
 register("presentation", "ppt pptx odp key");
 register("archive", "zip rar 7z tar gz bz2 xz");
 
-export const KIND_ICON: Record<FileKind, string> = {
-  folder: "📁",
-  image: "🖼️",
-  video: "🎥",
-  audio: "🎵",
-  pdf: "📕",
-  text: "📝",
-  document: "📄",
-  spreadsheet: "📊",
-  presentation: "📽️",
-  archive: "🗜️",
-  other: "📎",
-};
-
 export function fileKind(item: Pick<FileItem, "type" | "extension">): FileKind {
   if (item.type === "directory") return "folder";
   return KIND_BY_EXTENSION[item.extension] ?? "other";

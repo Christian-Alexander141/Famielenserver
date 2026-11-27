@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import ActionMenu, { type MenuItem } from "./ActionMenu";
+import Icon from "./Icon";
+import { FileIcon } from "./ui";
 import { thumbnailUrl } from "../lib/api";
-import { KIND_ICON, fileKind, formatDate, formatSize, hasThumbnail, type FileItem } from "../lib/files";
+import { fileKind, formatDate, formatSize, hasThumbnail, type FileItem } from "../lib/files";
 
 export interface EntryHandlers {
   onOpen: (item: FileItem) => void;
@@ -27,45 +30,60 @@ interface FileEntryProps extends EntryHandlers {
   thumbnails: boolean;
 }
 
-function Thumbnail({ item, enabled, className }: { item: FileItem; enabled: boolean; className: string }) {
+function Thumbnail({ item, enabled, size }: { item: FileItem; enabled: boolean; size: "md" | "lg" }) {
   const [failed, setFailed] = useState(false);
   if (!enabled || failed || !hasThumbnail(item)) {
-    return <span aria-hidden>{KIND_ICON[fileKind(item)]}</span>;
+    return <FileIcon kind={fileKind(item)} size={size} />;
   }
   return (
     // eslint-disable-next-line @next/next/no-img-element -- Vorschaubilder kommen vom eigenen Server
-    <img src={thumbnailUrl(item)} alt="" loading="lazy" onError={() => setFailed(true)} className={className} />
+    <img
+      src={thumbnailUrl(item)}
+      alt=""
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className={size === "lg" ? "absolute inset-0 h-full w-full object-cover" : "size-10 shrink-0 rounded-xl object-cover"}
+    />
   );
 }
 
-function Actions({ item, className = "", ...h }: { item: FileItem; className?: string } & EntryHandlers) {
-  const isDir = item.type === "directory";
+function actionsFor(item: FileItem, h: EntryHandlers): MenuItem[] {
+  return [
+    {
+      label: item.type === "directory" ? "Als ZIP herunterladen" : "Herunterladen",
+      icon: "download",
+      onSelect: () => h.onDownload(item),
+    },
+    { label: "Umbenennen", icon: "pencil", onSelect: () => h.onRename(item) },
+    { label: "Verschieben", icon: "folder-input", onSelect: () => h.onMove(item) },
+    { label: "In den Papierkorb", icon: "trash", onSelect: () => h.onDelete(item), danger: true },
+  ];
+}
+
+/** Am PC: Symbol-Schaltflächen in der Zeile, sichtbar beim Überfahren oder bei Auswahl. */
+function InlineActions({ actions, name }: { actions: MenuItem[]; name: string }) {
   return (
-    <div className={`flex shrink-0 items-center ${className}`}>
-      <button onClick={() => h.onDownload(item)} className="icon-button" title={isDir ? "Als ZIP herunterladen" : "Herunterladen"}>
-        ⬇️
-      </button>
-      <button onClick={() => h.onRename(item)} className="icon-button" title="Umbenennen">
-        ✏️
-      </button>
-      <button onClick={() => h.onMove(item)} className="icon-button" title="Verschieben">
-        📦
-      </button>
-      <button onClick={() => h.onDelete(item)} className="icon-button" title="In den Papierkorb">
-        🗑️
-      </button>
+    <div className="reveal hidden shrink-0 items-center sm:flex">
+      {actions.map((action) => (
+        <button
+          key={action.label}
+          type="button"
+          onClick={action.onSelect}
+          className={`icon-btn ${action.danger ? "icon-btn-danger" : ""}`}
+          title={action.label}
+          aria-label={`${action.label}: ${name}`}
+        >
+          <Icon name={action.icon} />
+        </button>
+      ))}
     </div>
   );
 }
 
 export default function FileEntry({ item, view, selected, dragging, dropTarget, thumbnails, ...handlers }: FileEntryProps) {
   const isDir = item.type === "directory";
-  const meta = isDir ? formatDate(item.modified) : `${formatSize(item.size)} · ${formatDate(item.modified)}`;
-  const highlight = dropTarget
-    ? "ring-2 ring-green-500 bg-green-900/30"
-    : selected
-      ? "bg-blue-900/30"
-      : "hover:bg-gray-800";
+  const actions = actionsFor(item, handlers);
+  const menuLabel = `Aktionen für ${item.name}`;
 
   const dragProps = {
     draggable: true,
@@ -82,47 +100,74 @@ export default function FileEntry({ item, view, selected, dragging, dropTarget, 
       checked={selected}
       onChange={() => handlers.onToggle(item)}
       aria-label={`${item.name} auswählen`}
-      className="h-5 w-5 shrink-0 cursor-pointer accent-blue-500"
+      className="checkbox"
     />
   );
 
   if (view === "grid") {
+    const tone = dropTarget
+      ? "border-accent bg-accent/10 ring-2 ring-accent"
+      : selected
+        ? "border-accent bg-accent/5 ring-1 ring-accent"
+        : "border-line bg-surface hover:border-line-strong hover:shadow-[var(--shadow-md)]";
     return (
-      <li {...dragProps} className={`relative flex flex-col rounded-xl p-2 transition-colors ${highlight} ${dragging ? "opacity-40" : ""}`}>
-        <div className="absolute left-3 top-3 z-10">{checkbox}</div>
+      <li
+        {...dragProps}
+        data-active={selected || dropTarget}
+        className={`group relative flex flex-col rounded-2xl border p-1.5 transition ${tone} ${dragging ? "opacity-40" : ""}`}
+      >
         <button
+          type="button"
           onClick={() => handlers.onOpen(item)}
-          className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg bg-black/30 text-5xl"
+          className="relative grid aspect-square w-full place-items-center overflow-hidden rounded-xl bg-surface-2"
           title={item.name}
         >
-          <Thumbnail item={item} enabled={thumbnails} className="h-full w-full object-cover" />
+          <Thumbnail item={item} enabled={thumbnails} size="lg" />
         </button>
-        <p className="mt-2 truncate text-sm" title={item.name}>
-          {item.name}
-        </p>
-        <p className="truncate text-xs text-gray-500">{isDir ? "Ordner" : formatSize(item.size)}</p>
-        <Actions item={item} {...handlers} />
+        <label className="reveal-check absolute left-3 top-3 grid size-8 place-items-center rounded-lg bg-surface/90 shadow-[var(--shadow-sm)] backdrop-blur">
+          {checkbox}
+        </label>
+        <div className="flex items-center gap-1 pb-0.5 pl-1.5 pt-2">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium" title={item.name}>
+              {item.name}
+            </p>
+            <p className="truncate text-xs text-subtle">{dropTarget ? "Hier ablegen" : isDir ? "Ordner" : formatSize(item.size)}</p>
+          </div>
+          <ActionMenu label={menuLabel} items={actions} className="size-8" />
+        </div>
       </li>
     );
   }
 
+  const tone = dropTarget ? "bg-accent/10 ring-2 ring-inset ring-accent" : selected ? "bg-accent/8" : "hover:bg-fg/4";
+  const meta = dropTarget
+    ? "Hier ablegen"
+    : isDir
+      ? formatDate(item.modified)
+      : `${formatSize(item.size)} · ${formatDate(item.modified)}`;
+
   return (
     <li
       {...dragProps}
-      className={`flex flex-wrap items-center gap-x-3 rounded-xl px-2 py-1.5 transition-colors sm:flex-nowrap ${highlight} ${dragging ? "opacity-40" : ""}`}
+      data-active={selected || dropTarget}
+      className={`group flex items-center rounded-xl pr-1 transition-colors ${tone} ${dragging ? "opacity-40" : ""}`}
     >
-      {checkbox}
-      <button onClick={() => handlers.onOpen(item)} className="flex min-w-0 flex-1 basis-[calc(100%-2rem)] items-center gap-3 py-1 text-left sm:basis-auto">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg text-2xl">
-          <Thumbnail item={item} enabled={thumbnails} className="h-10 w-10 rounded-lg object-cover" />
-        </span>
+      <label className="grid w-11 shrink-0 place-items-center self-stretch">{checkbox}</label>
+      <button
+        type="button"
+        onClick={() => handlers.onOpen(item)}
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-2 pr-2 text-left"
+      >
+        <Thumbnail item={item} enabled={thumbnails} size="md" />
         <span className="min-w-0">
-          <span className="block truncate text-blue-400 hover:underline">{item.name}</span>
-          <span className="block truncate text-xs text-gray-500">{dropTarget ? "Hier ablegen" : meta}</span>
+          <span className="block truncate text-sm font-medium">{item.name}</span>
+          <span className={`block truncate text-xs ${dropTarget ? "text-accent-text" : "text-subtle"}`}>{meta}</span>
         </span>
       </button>
-      {/* Auf dem Handy in eigener Zeile unter dem Namen, damit der Name lesbar bleibt */}
-      <Actions item={item} className="ml-auto sm:ml-0" {...handlers} />
+      <InlineActions actions={actions} name={item.name} />
+      {/* Auf dem Handy ein Menü statt vier Symbole – so bleibt der Name lesbar */}
+      <ActionMenu label={menuLabel} items={actions} className="sm:hidden" />
     </li>
   );
 }

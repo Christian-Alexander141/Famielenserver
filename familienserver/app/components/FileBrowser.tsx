@@ -2,9 +2,11 @@
 
 import { useCallback, useMemo, useState } from "react";
 import FileEntry, { type EntryHandlers } from "./FileEntry";
+import Icon from "./Icon";
 import PreviewDialog from "./PreviewDialog";
 import { ConfirmDialog, MoveDialog, NameDialog } from "./dialogs";
 import { useToast } from "./Toast";
+import { EmptyState, ErrorText, Loading } from "./ui";
 import { apiPost, downloadUrl, errorMessage, startDownload, zipUrl } from "../lib/api";
 import {
   DRAG_TYPE,
@@ -59,50 +61,62 @@ interface BreadcrumbsProps {
 function Breadcrumbs({ path, dragging, onNavigate, onMove, onExternalDrop, onDragDone }: BreadcrumbsProps) {
   const [over, setOver] = useState<string | null>(null);
   const parts = path ? path.split("/") : [];
-  const crumbs = [{ label: "🏠 Hauptordner", target: "" }, ...parts.map((part, i) => ({ label: part, target: parts.slice(0, i + 1).join("/") }))];
+  const crumbs = [{ label: "Hauptordner", target: "" }, ...parts.map((part, i) => ({ label: part, target: parts.slice(0, i + 1).join("/") }))];
   const valid = (target: string) => !!dragging && target !== path && !dragging.some((p) => isSameOrInside(target, p));
 
   return (
-    <nav aria-label="Pfad" className="mb-3 flex flex-wrap items-center gap-1 text-sm">
-      {crumbs.map((crumb, i) => (
-        <span key={crumb.target} className="flex items-center gap-1">
-          {i > 0 && <span className="text-gray-600">/</span>}
-          <button
-            onClick={() => onNavigate(crumb.target)}
-            disabled={crumb.target === path}
-            className={`rounded-lg px-2 py-1 ${crumb.target === path ? "font-medium text-white" : "text-blue-400 hover:bg-gray-800"} ${
-              over === crumb.target ? "ring-2 ring-green-500" : ""
-            }`}
-            onDragOver={(e) => {
-              if ((isInternalDrag(e) && valid(crumb.target)) || (isExternalFileDrag(e) && crumb.target !== path)) {
-                e.preventDefault();
-                e.stopPropagation();
-                setOver(crumb.target);
-              }
-            }}
-            onDragLeave={() => setOver(null)}
-            onDrop={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setOver(null);
-              if (isInternalDrag(e)) {
-                const paths = draggedPaths(e).filter((p) => !isSameOrInside(crumb.target, p));
-                onDragDone();
-                if (paths.length) onMove(paths, crumb.target);
-              } else if (isExternalFileDrag(e)) {
-                onExternalDrop(e.dataTransfer, crumb.target);
-              }
-            }}
-          >
-            {crumb.label}
-          </button>
-        </span>
-      ))}
+    <nav aria-label="Pfad" className="flex min-w-0 flex-wrap items-center gap-0.5 text-sm">
       {path && (
-        <button onClick={() => onNavigate(parts.slice(0, -1).join("/"))} className="ml-auto rounded-lg px-2 py-1 text-gray-400 hover:bg-gray-800 hover:text-white">
-          ← Zurück
+        <button
+          type="button"
+          onClick={() => onNavigate(parts.slice(0, -1).join("/"))}
+          className="icon-btn -ml-1.5 mr-1 size-8"
+          title="Eine Ebene zurück"
+          aria-label="Eine Ebene zurück"
+        >
+          <Icon name="arrow-left" />
         </button>
       )}
+      {crumbs.map((crumb, i) => {
+        const current = crumb.target === path;
+        return (
+          <span key={crumb.target} className="flex min-w-0 items-center gap-0.5">
+            {i > 0 && <Icon name="chevron-right" className="size-4 text-subtle" />}
+            <button
+              type="button"
+              onClick={() => onNavigate(crumb.target)}
+              disabled={current}
+              aria-current={current ? "page" : undefined}
+              className={`flex min-w-0 max-w-56 items-center gap-1.5 rounded-lg px-2 py-1 transition-colors ${
+                current ? "font-semibold text-fg" : "text-muted hover:bg-fg/7 hover:text-fg"
+              } ${over === crumb.target ? "bg-accent/10 text-accent-text ring-2 ring-accent" : ""}`}
+              onDragOver={(e) => {
+                if ((isInternalDrag(e) && valid(crumb.target)) || (isExternalFileDrag(e) && crumb.target !== path)) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setOver(crumb.target);
+                }
+              }}
+              onDragLeave={() => setOver(null)}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setOver(null);
+                if (isInternalDrag(e)) {
+                  const paths = draggedPaths(e).filter((p) => !isSameOrInside(crumb.target, p));
+                  onDragDone();
+                  if (paths.length) onMove(paths, crumb.target);
+                } else if (isExternalFileDrag(e)) {
+                  onExternalDrop(e.dataTransfer, crumb.target);
+                }
+              }}
+            >
+              {i === 0 && <Icon name="house" />}
+              <span className="truncate">{crumb.label}</span>
+            </button>
+          </span>
+        );
+      })}
     </nav>
   );
 }
@@ -121,6 +135,15 @@ async function forEachPath(paths: string[], action: (path: string) => Promise<un
   }
   return errors;
 }
+
+const SORT_OPTIONS: { value: string; label: string }[] = [
+  { value: "name-asc", label: "Name A–Z" },
+  { value: "name-desc", label: "Name Z–A" },
+  { value: "modified-desc", label: "Neueste zuerst" },
+  { value: "modified-asc", label: "Älteste zuerst" },
+  { value: "size-desc", label: "Größte zuerst" },
+  { value: "size-asc", label: "Kleinste zuerst" },
+];
 
 export default function FileBrowser(props: FileBrowserProps) {
   const { path, items, error, thumbnails, trashDays, view, sort, onNavigate, onChanged, onExternalDrop } = props;
@@ -260,36 +283,42 @@ export default function FileBrowser(props: FileBrowserProps) {
 
   // --------------------------------------------------------------- Ansicht
 
+  const selecting = selectedPaths.length > 0;
   const allSelected = visible.length > 0 && selectedPaths.length === visible.length;
+  const folderName = path ? `„${path.split("/").pop()}“` : "den Hauptordner";
 
   let content: React.ReactNode;
   if (error) {
     content = (
-      <div className="py-6 text-center">
-        <p className="mb-3 text-red-400">❌ {error}</p>
-        <button onClick={() => onNavigate("")} className="ios-button">
-          🏠 Zum Hauptordner
+      <div className="flex flex-col items-center gap-4 px-4 py-10 text-center">
+        <ErrorText>{error}</ErrorText>
+        <button type="button" onClick={() => onNavigate("")} className="btn btn-secondary">
+          <Icon name="house" />
+          Zum Hauptordner
         </button>
       </div>
     );
   } else if (items === null) {
-    content = (
-      <div className="py-6 text-center text-gray-400">
-        <div className="loading-spinner mx-auto mb-2" />
-        Lade Dateien …
-      </div>
-    );
+    content = <Loading className="py-12">Lade Dateien …</Loading>;
   } else if (visible.length === 0) {
-    content = (
-      <p className="py-8 text-center italic text-gray-500">
-        {items.length === 0
-          ? "Dieser Ordner ist leer. Ziehe Dateien hierher oder nutze „Hochladen“."
-          : `Nichts gefunden für „${filter}“.`}
-      </p>
-    );
+    content =
+      items.length === 0 ? (
+        <EmptyState icon="folder-open" title="Dieser Ordner ist leer">
+          Nutze „Hochladen“ oben oder ziehe Dateien hierher.
+        </EmptyState>
+      ) : (
+        <EmptyState icon="search" title={`Nichts gefunden für „${filter}“`}>
+          <button type="button" onClick={() => setFilter("")} className="btn btn-secondary btn-sm mt-2">
+            Filter zurücksetzen
+          </button>
+        </EmptyState>
+      );
   } else {
     content = (
-      <ul className={view === "grid" ? "grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4" : "space-y-1"}>
+      <ul
+        data-selecting={selecting}
+        className={view === "grid" ? "grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 sm:p-4 md:grid-cols-4" : "flex flex-col gap-0.5 p-1.5 sm:p-2"}
+      >
         {visible.map((item) => (
           <FileEntry
             key={item.path}
@@ -307,90 +336,138 @@ export default function FileBrowser(props: FileBrowserProps) {
   }
 
   return (
-    <div {...zoneProps} className={`relative rounded-xl ${zoneActive ? "ring-2 ring-blue-500" : ""}`}>
+    <section {...zoneProps} aria-labelledby="files-title" className="card relative">
       {zoneActive && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-blue-950/80 text-blue-200">
-          ⬆️ Loslassen zum Hochladen nach {path ? `„${path.split("/").pop()}“` : "Hauptordner"}
+        <div className="pointer-events-none absolute inset-0 z-30 flex justify-center rounded-2xl border-2 border-dashed border-accent bg-surface/85 backdrop-blur-sm">
+          <div className="sticky top-[40vh] mt-16 flex h-fit flex-col items-center gap-2 px-4 text-center">
+            <span className="grid size-12 place-items-center rounded-2xl bg-accent/15 text-accent-text">
+              <Icon name="upload" className="size-6" />
+            </span>
+            <p className="font-medium">Loslassen zum Hochladen</p>
+            <p className="text-sm text-muted">in {folderName}</p>
+          </div>
         </div>
       )}
 
-      <Breadcrumbs
-        path={path}
-        dragging={dragging}
-        onNavigate={onNavigate}
-        onMove={(paths, dest) => movePaths(paths, dest).catch(() => {})}
-        onExternalDrop={onExternalDrop}
-        onDragDone={() => setDragging(null)}
-      />
-
-      {/* Werkzeugleiste */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <input
-          type="search"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="In diesem Ordner filtern …"
-          className="ios-input min-w-0 flex-1 basis-48"
-          aria-label="Filter"
-        />
-        <select
-          value={`${sort.key}-${sort.descending ? "desc" : "asc"}`}
-          onChange={(e) => {
-            const [key, dir] = e.target.value.split("-");
-            props.onSortChange({ key: key as SortKey, descending: dir === "desc" });
-          }}
-          className="ios-input w-auto"
-          aria-label="Sortierung"
-        >
-          <option value="name-asc">Name A–Z</option>
-          <option value="name-desc">Name Z–A</option>
-          <option value="modified-desc">Neueste zuerst</option>
-          <option value="modified-asc">Älteste zuerst</option>
-          <option value="size-desc">Größte zuerst</option>
-          <option value="size-asc">Kleinste zuerst</option>
-        </select>
-        <div className="flex overflow-hidden rounded-xl border border-gray-700" role="group" aria-label="Ansicht">
-          {(["list", "grid"] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => props.onViewChange(mode)}
-              className={`px-3 py-2 text-sm ${view === mode ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800"}`}
-              aria-pressed={view === mode}
+      <div className="flex flex-col gap-3 p-4 sm:p-5">
+        <div className="flex items-center gap-2">
+          <h2 id="files-title" className="text-lg font-semibold tracking-tight">
+            Dateien
+          </h2>
+          {items && !error && (
+            <span
+              className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium tabular-nums text-muted"
+              title={`${items.length} ${items.length === 1 ? "Element" : "Elemente"}`}
             >
-              {mode === "list" ? "☰ Liste" : "▦ Kacheln"}
+              {items.length}
+            </span>
+          )}
+          <div className="ml-auto flex items-center gap-1">
+            <button type="button" onClick={onChanged} className="icon-btn" title="Aktualisieren" aria-label="Aktualisieren">
+              <Icon name="refresh" />
             </button>
-          ))}
+            <button type="button" onClick={() => setDialog({ type: "mkdir" })} className="btn btn-secondary btn-sm" disabled={!!error}>
+              <Icon name="folder-plus" />
+              Neuer Ordner
+            </button>
+          </div>
+        </div>
+
+        <Breadcrumbs
+          path={path}
+          dragging={dragging}
+          onNavigate={onNavigate}
+          onMove={(paths, dest) => movePaths(paths, dest).catch(() => {})}
+          onExternalDrop={onExternalDrop}
+          onDragDone={() => setDragging(null)}
+        />
+
+        {/* Werkzeugleiste */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-0 flex-1 basis-56">
+            <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-subtle" />
+            <input
+              type="search"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="In diesem Ordner filtern …"
+              className="input pl-9"
+              aria-label="Filter"
+            />
+          </div>
+          <div className="relative">
+            <select
+              value={`${sort.key}-${sort.descending ? "desc" : "asc"}`}
+              onChange={(e) => {
+                const [key, dir] = e.target.value.split("-");
+                props.onSortChange({ key: key as SortKey, descending: dir === "desc" });
+              }}
+              className="input w-auto"
+              aria-label="Sortierung"
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <Icon name="chevron-down" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-subtle" />
+          </div>
+          <div className="flex h-10 items-center gap-0.5 rounded-xl bg-surface-2 p-1" role="group" aria-label="Ansicht">
+            {(["list", "grid"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => props.onViewChange(mode)}
+                aria-pressed={view === mode}
+                title={mode === "list" ? "Liste" : "Kacheln"}
+                className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium transition-colors ${
+                  view === mode ? "bg-surface text-fg shadow-[var(--shadow-sm)]" : "text-muted hover:text-fg"
+                }`}
+              >
+                <Icon name={mode} />
+                <span className="sr-only sm:not-sr-only">{mode === "list" ? "Liste" : "Kacheln"}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Auswahl-Leiste */}
+      {/* Auswahl-Leiste – bleibt beim Scrollen sichtbar, sobald etwas ausgewählt ist */}
       {visible.length > 0 && (
-        <div className="mb-2 flex min-h-10 flex-wrap items-center gap-2 px-2 text-sm">
-          <label className="flex cursor-pointer items-center gap-2 text-gray-400">
+        <div
+          className={`flex min-h-12 flex-wrap items-center gap-x-3 gap-y-2 border-y border-line py-2 pl-[1.1875rem] pr-3 sm:pl-[1.3125rem] sm:pr-4 ${
+            selecting ? "sticky top-14 z-20 bg-surface" : ""
+          }`}
+        >
+          <label className="flex items-center gap-3 text-sm text-muted">
             <input
               type="checkbox"
+              ref={(el) => {
+                if (el) el.indeterminate = selecting && !allSelected;
+              }}
               checked={allSelected}
               onChange={() => setSelected(allSelected ? new Set() : new Set(visible.map((i) => i.path)))}
-              className="h-5 w-5 accent-blue-500"
+              className="checkbox"
             />
-            {selectedPaths.length ? `${selectedPaths.length} ausgewählt` : "Alle auswählen"}
+            {selecting ? <span className="font-medium text-fg">{selectedPaths.length} ausgewählt</span> : "Alle auswählen"}
           </label>
-          {selectedPaths.length > 0 && (
-            <div className="ml-auto flex flex-wrap gap-2">
-              <button onClick={() => startDownload(zipUrl(selectedPaths))} className="ios-button ios-button-secondary py-1.5 text-sm">
-                ⬇️ Als ZIP
+          {selecting && (
+            <div className="ml-auto flex flex-wrap items-center gap-1.5">
+              <button type="button" onClick={() => startDownload(zipUrl(selectedPaths))} className="btn btn-secondary btn-sm">
+                <Icon name="download" />
+                Als ZIP
               </button>
-              <button onClick={() => setDialog({ type: "move", paths: selectedPaths })} className="ios-button ios-button-secondary py-1.5 text-sm">
-                📦 Verschieben
+              <button type="button" onClick={() => setDialog({ type: "move", paths: selectedPaths })} className="btn btn-secondary btn-sm">
+                <Icon name="folder-input" />
+                Verschieben
               </button>
-              <button
-                onClick={() => setDialog({ type: "delete", paths: selectedPaths })}
-                className="ios-button ios-button-secondary py-1.5 text-sm text-red-300"
-              >
-                🗑️ Löschen
+              <button type="button" onClick={() => setDialog({ type: "delete", paths: selectedPaths })} className="btn btn-danger-soft btn-sm">
+                <Icon name="trash" />
+                Löschen
               </button>
-              <button onClick={clearSelection} className="ios-button ios-button-secondary py-1.5 text-sm">
-                ✕
+              <button type="button" onClick={clearSelection} className="icon-btn size-8" title="Auswahl aufheben" aria-label="Auswahl aufheben">
+                <Icon name="x" />
               </button>
             </div>
           )}
@@ -399,17 +476,10 @@ export default function FileBrowser(props: FileBrowserProps) {
 
       {content}
 
-      <div className="mt-4 flex gap-2">
-        <button onClick={() => setDialog({ type: "mkdir" })} className="ios-button flex-1 bg-green-600 hover:bg-green-700" disabled={!!error}>
-          📁 Neuer Ordner
-        </button>
-        <button onClick={onChanged} className="ios-button ios-button-secondary flex-1">
-          🔄 Aktualisieren
-        </button>
-      </div>
       {visible.length > 0 && (
-        <p className="mt-3 text-center text-xs text-gray-500">
-          💡 Tipp: Dateien und Ordner per Drag &amp; Drop auf einen Ordner oder in die Pfadleiste ziehen, um sie zu verschieben.
+        <p className="hidden items-center gap-2 border-t border-line px-5 py-3 text-xs text-subtle pointer-fine:flex">
+          <Icon name="info" className="size-3.5" />
+          Tipp: Dateien und Ordner per Drag &amp; Drop auf einen Ordner oder in die Pfadleiste ziehen, um sie zu verschieben.
         </p>
       )}
 
@@ -451,14 +521,14 @@ export default function FileBrowser(props: FileBrowserProps) {
             <>
               {dialog.paths.length === 1 ? (
                 <p>
-                  <strong>{dialog.paths[0].split("/").pop()}</strong> wird in den Papierkorb verschoben.
+                  <strong className="font-semibold text-fg">{dialog.paths[0].split("/").pop()}</strong> wird in den Papierkorb verschoben.
                 </p>
               ) : (
                 <p>
-                  <strong>{dialog.paths.length} Elemente</strong> werden in den Papierkorb verschoben.
+                  <strong className="font-semibold text-fg">{dialog.paths.length} Elemente</strong> werden in den Papierkorb verschoben.
                 </p>
               )}
-              <p className="mt-2 text-gray-400">
+              <p className="mt-2">
                 {trashDays > 0
                   ? `Du kannst sie dort ${trashDays} Tage lang wiederherstellen.`
                   : "Du kannst sie dort wiederherstellen, bis der Papierkorb geleert wird."}
@@ -479,6 +549,6 @@ export default function FileBrowser(props: FileBrowserProps) {
           onClose={() => setDialog(null)}
         />
       )}
-    </div>
+    </section>
   );
 }

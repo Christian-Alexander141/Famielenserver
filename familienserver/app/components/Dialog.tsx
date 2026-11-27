@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import Icon from "./Icon";
 
 interface DialogProps {
   title: string;
@@ -9,7 +10,7 @@ interface DialogProps {
   wide?: boolean;
 }
 
-/** Modales Fenster: schließt mit Escape, Klick auf den Hintergrund oder ✕. */
+/** Modales Fenster: schließt mit Escape, Klick auf den Hintergrund oder das X. */
 export default function Dialog({ title, onClose, children, wide = false }: DialogProps) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -21,7 +22,7 @@ export default function Dialog({ title, onClose, children, wide = false }: Dialo
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-3 backdrop-blur-[2px] animate-fade-in motion-reduce:animate-none sm:p-6"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -30,15 +31,17 @@ export default function Dialog({ title, onClose, children, wide = false }: Dialo
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`ios-card mb-0 flex max-h-[92vh] w-full flex-col ${wide ? "max-w-5xl" : "max-w-md"}`}
+        className={`card flex max-h-[calc(100dvh-1.5rem)] w-full flex-col shadow-[var(--shadow-lg)] animate-pop-in motion-reduce:animate-none sm:max-h-[calc(100dvh-3rem)] ${
+          wide ? "max-w-5xl" : "max-w-md"
+        }`}
       >
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <h3 className="truncate text-lg font-medium">{title}</h3>
-          <button onClick={onClose} className="icon-button text-gray-400" aria-label="Schließen">
-            ✕
+        <div className="flex items-center justify-between gap-4 py-3 pl-5 pr-3">
+          <h3 className="truncate text-base font-semibold">{title}</h3>
+          <button type="button" onClick={onClose} className="icon-btn" aria-label="Schließen" title="Schließen">
+            <Icon name="x" className="size-5" />
           </button>
         </div>
-        <div className="min-h-0 overflow-auto">{children}</div>
+        <div className="min-h-0 overflow-auto px-5 pb-5">{children}</div>
       </div>
     </div>
   );

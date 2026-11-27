@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode 
 import ChatInterface from "./components/ChatInterface";
 import FileBrowser, { type SortState, type ViewMode } from "./components/FileBrowser";
 import FileUpload from "./components/FileUpload";
+import Icon, { type IconName } from "./components/Icon";
 import Login from "./components/Login";
 import SystemMonitor from "./components/SystemMonitor";
 import Trash from "./components/Trash";
@@ -35,24 +36,76 @@ function navigate(path: string) {
 
 // ---------------------------------------------------------------- Bausteine
 
-function Section({ title, children, collapsible = false }: { title: string; children: ReactNode; collapsible?: boolean }) {
-  const [open, setOpen] = useState(!collapsible);
+function Logo() {
   return (
-    <section className="ios-card">
-      <h2 className="flex items-center justify-between text-lg font-medium">
-        {title}
-        {collapsible && (
-          <button onClick={() => setOpen(!open)} className="ios-button ios-button-secondary py-1.5 text-sm" aria-expanded={open}>
-            {open ? "Schließen" : "Öffnen"}
+    <span className="grid size-8 place-items-center rounded-[10px] bg-linear-to-br from-[#5b8cff] to-[#2f5be8] text-white shadow-[var(--shadow-sm)]">
+      <Icon name="house" className="size-[18px]" />
+    </span>
+  );
+}
+
+function Header({ onLogout }: { onLogout?: () => void }) {
+  return (
+    <header className="sticky top-0 z-40 border-b border-line bg-bg/80 backdrop-blur-xl">
+      <div className="mx-auto flex h-14 max-w-5xl items-center gap-2.5 px-4 sm:px-6">
+        <Logo />
+        <span className="text-[15px] font-semibold tracking-tight">Familienserver</span>
+        {onLogout && (
+          <button type="button" onClick={onLogout} className="btn btn-ghost btn-sm ml-auto -mr-2">
+            <Icon name="log-out" />
+            Abmelden
           </button>
         )}
+      </div>
+    </header>
+  );
+}
+
+interface PanelProps {
+  icon: IconName;
+  title: string;
+  description: string;
+  children: ReactNode;
+  collapsible?: boolean;
+}
+
+/** Karte mit Überschrift; aufklappbare Karten laden ihren Inhalt erst beim Öffnen. */
+function Panel({ icon, title, description, children, collapsible = false }: PanelProps) {
+  const [open, setOpen] = useState(!collapsible);
+  const heading = (
+    <>
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface-2 text-muted">
+        <Icon name={icon} className="size-[18px]" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-semibold">{title}</span>
+        <span className="block text-sm text-muted">{description}</span>
+      </span>
+    </>
+  );
+  return (
+    <section className="card">
+      <h2>
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            className={`flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-fg/3 sm:px-5 ${open ? "rounded-t-2xl" : "rounded-2xl"}`}
+          >
+            {heading}
+            <Icon name="chevron-down" className={`size-5 text-subtle transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          </button>
+        ) : (
+          <span className="flex items-center gap-3 p-4 sm:px-5">{heading}</span>
+        )}
       </h2>
-      {open && <div className="mt-4">{children}</div>}
+      {open && <div className="border-t border-line p-4 sm:p-5">{children}</div>}
     </section>
   );
 }
 
-function App({ session, onLogout }: { session: SessionInfo; onLogout: () => void }) {
+function App({ session }: { session: SessionInfo }) {
   const notify = useToast();
   const path = useSyncExternalStore(subscribeToHash, readPath, () => "");
   const [listing, setListing] = useState<{ path: string; items: FileItem[]; error?: string } | null>(null);
@@ -86,52 +139,39 @@ function App({ session, onLogout }: { session: SessionInfo; onLogout: () => void
   );
 
   return (
-    <>
-      <Section title="📤 Hochladen">
-        <FileUpload uploader={uploader} currentPath={path} />
-      </Section>
+    <div className="flex flex-col gap-4 sm:gap-5">
+      <FileUpload uploader={uploader} currentPath={path} />
 
-      <section className="ios-card">
-        <h2 className="mb-3 text-lg font-medium">
-          📁 Dateien
-          {current && !current.error && <span className="ml-2 text-sm text-gray-500">{current.items.length} {current.items.length === 1 ? "Element" : "Elemente"}</span>}
-        </h2>
-        <FileBrowser
-          key={path}
-          path={path}
-          items={current ? current.items : null}
-          error={current?.error ?? null}
-          thumbnails={session.thumbnails}
-          trashDays={session.trash_days}
-          view={view}
-          onViewChange={setView}
-          sort={sort}
-          onSortChange={setSort}
-          onNavigate={navigate}
-          onChanged={reload}
-          onExternalDrop={uploadDropped}
-        />
-      </section>
+      <FileBrowser
+        key={path}
+        path={path}
+        items={current ? current.items : null}
+        error={current?.error ?? null}
+        thumbnails={session.thumbnails}
+        trashDays={session.trash_days}
+        view={view}
+        onViewChange={setView}
+        sort={sort}
+        onSortChange={setSort}
+        onNavigate={navigate}
+        onChanged={reload}
+        onExternalDrop={uploadDropped}
+      />
 
-      <Section title="🤖 Dateisuche" collapsible>
+      <Panel icon="search" title="Dateisuche" description="Dateien in allen Ordnern finden" collapsible>
         <ChatInterface onOpenFolder={navigate} />
-      </Section>
+      </Panel>
 
-      <Section title="🗑️ Papierkorb" collapsible>
+      <Panel icon="trash" title="Papierkorb" description="Gelöschte Dateien wiederherstellen" collapsible>
         <Trash refreshToken={reloadToken} onRestored={reload} />
-      </Section>
+      </Panel>
 
-      <Section title="📊 Systemauslastung">
+      <Panel icon="activity" title="Systemauslastung" description="Live-Werte des Servers">
         <SystemMonitor />
-      </Section>
+      </Panel>
 
-      <div className="mt-8 flex items-center justify-center gap-4 text-sm text-gray-500">
-        <span>Familienserver v2.0 – Dokumente für das Heimnetzwerk</span>
-        <button onClick={onLogout} className="text-gray-400 underline hover:text-white">
-          Abmelden
-        </button>
-      </div>
-    </>
+      <footer className="pb-4 pt-2 text-center text-xs text-subtle">Familienserver v2.0 · Dokumente für das Heimnetzwerk</footer>
+    </div>
   );
 }
 
@@ -175,33 +215,37 @@ export default function Home() {
   let body: ReactNode;
   if (offline && !session) {
     body = (
-      <div className="ios-card border border-yellow-700 bg-yellow-900/20">
-        <h2 className="mb-2 text-yellow-400">⚠️ Keine Verbindung zum Server</h2>
-        <p className="text-sm text-yellow-200">{offline}. Läuft der Familienserver? Starte ihn mit ./start.sh.</p>
-        <button onClick={recheck} className="ios-button mt-3 bg-yellow-600 hover:bg-yellow-700">
-          🔄 Erneut versuchen
+      <div className="card mx-auto mt-8 max-w-md p-6 text-center sm:mt-16 sm:p-8">
+        <span className="mx-auto mb-4 grid size-12 place-items-center rounded-2xl bg-warning/15 text-warning-text">
+          <Icon name="triangle-alert" className="size-6" strokeWidth={1.75} />
+        </span>
+        <h1 className="text-lg font-semibold tracking-tight">Keine Verbindung zum Server</h1>
+        <p className="mt-1.5 text-sm text-muted">
+          {offline}. Läuft der Familienserver? Starte ihn mit <code>./start.sh</code>.
+        </p>
+        <button type="button" onClick={recheck} className="btn btn-secondary mt-5">
+          <Icon name="refresh" />
+          Erneut versuchen
         </button>
       </div>
     );
   } else if (!session) {
     body = (
-      <div className="py-10 text-center text-gray-400">
-        <div className="loading-spinner mx-auto mb-2" />
+      <div className="flex flex-col items-center gap-3 py-24 text-sm text-muted">
+        <span className="spinner size-6 text-accent-text" />
         Verbinde …
       </div>
     );
   } else if (!session.authenticated) {
     body = <Login onLoggedIn={recheck} />;
   } else {
-    body = <App session={session} onLogout={logout} />;
+    body = <App session={session} />;
   }
 
   return (
     <ToastProvider>
-      <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6">
-        <h1 className="mb-6 text-center text-xl font-medium">🗂️ Familienserver</h1>
-        {body}
-      </main>
+      <Header onLogout={session?.authenticated ? logout : undefined} />
+      <main className="mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 sm:py-8">{body}</main>
     </ToastProvider>
   );
 }

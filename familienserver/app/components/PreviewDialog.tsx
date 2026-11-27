@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Dialog from "./Dialog";
+import Icon from "./Icon";
+import { ErrorText, Loading } from "./ui";
 import { downloadUrl, errorMessage, startDownload } from "../lib/api";
 import { fileKind, formatDate, formatSize, type FileItem } from "../lib/files";
 
@@ -32,11 +34,11 @@ function TextPreview({ item }: { item: FileItem }) {
     };
   }, [item.path]);
 
-  if (!state || state.path !== item.path) return <p className="text-gray-400">Lade …</p>;
-  if (state.error) return <p className="text-red-400">❌ {state.error}</p>;
+  if (!state || state.path !== item.path) return <Loading>Lade …</Loading>;
+  if (state.error) return <ErrorText>{state.error}</ErrorText>;
   const text = state.text ?? "";
   return (
-    <pre className="max-h-[70vh] overflow-auto whitespace-pre-wrap rounded-xl bg-black/40 p-4 text-sm text-gray-200">
+    <pre className="max-h-[70vh] overflow-auto whitespace-pre-wrap rounded-xl border border-line bg-surface-2 p-4 font-mono text-[13px] leading-relaxed">
       {text.length > MAX_TEXT_PREVIEW ? `${text.slice(0, MAX_TEXT_PREVIEW)}\n\n… (gekürzt)` : text}
     </pre>
   );
@@ -64,7 +66,7 @@ export default function PreviewDialog({ items, index, onIndexChange, onClose }: 
 
   return (
     <Dialog title={item.name} onClose={onClose} wide>
-      <div className="relative flex min-h-[40vh] items-center justify-center">
+      <div className="relative flex min-h-[40vh] items-center justify-center rounded-xl bg-surface-2">
         {kind === "image" && (
           // eslint-disable-next-line @next/next/no-img-element -- Bilder kommen vom eigenen Server, next/image geht im statischen Export nicht
           <img key={item.path} src={src} alt={item.name} className="max-h-[70vh] max-w-full rounded-lg object-contain" />
@@ -82,21 +84,36 @@ export default function PreviewDialog({ items, index, onIndexChange, onClose }: 
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <button onClick={() => onIndexChange(index - 1)} disabled={!hasPrev} className="ios-button ios-button-secondary">
-          ← Zurück
-        </button>
-        <div className="text-center text-xs text-gray-400">
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={() => onIndexChange(index - 1)}
+            disabled={!hasPrev}
+            className="btn btn-secondary btn-sm"
+            aria-label="Vorherige Datei"
+          >
+            <Icon name="chevron-left" />
+            <span className="hidden sm:inline">Zurück</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onIndexChange(index + 1)}
+            disabled={!hasNext}
+            className="btn btn-secondary btn-sm"
+            aria-label="Nächste Datei"
+          >
+            <span className="hidden sm:inline">Weiter</span>
+            <Icon name="chevron-right" />
+          </button>
+        </div>
+        <div className="order-last w-full text-center text-xs tabular-nums text-subtle sm:order-none sm:w-auto">
           {formatSize(item.size)} · {formatDate(item.modified)}
           {items.length > 1 && ` · ${index + 1} von ${items.length}`}
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => startDownload(downloadUrl(item.path))} className="ios-button ios-button-secondary">
-            ⬇️ Herunterladen
-          </button>
-          <button onClick={() => onIndexChange(index + 1)} disabled={!hasNext} className="ios-button ios-button-secondary">
-            Weiter →
-          </button>
-        </div>
+        <button type="button" onClick={() => startDownload(downloadUrl(item.path))} className="btn btn-primary btn-sm">
+          <Icon name="download" />
+          Herunterladen
+        </button>
       </div>
     </Dialog>
   );

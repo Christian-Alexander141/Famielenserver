@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import Icon, { type IconName } from "./Icon";
 
 type Kind = "success" | "error" | "info";
 type Notify = (kind: Kind, text: string) => void;
@@ -13,12 +14,11 @@ interface Toast {
 
 const ToastContext = createContext<Notify>(() => {});
 
-const STYLE: Record<Kind, string> = {
-  success: "border-green-700 bg-green-950/90 text-green-300",
-  error: "border-red-700 bg-red-950/90 text-red-300",
-  info: "border-blue-700 bg-blue-950/90 text-blue-200",
+const STYLE: Record<Kind, { icon: IconName; tone: string }> = {
+  success: { icon: "circle-check", tone: "text-success-text" },
+  error: { icon: "circle-alert", tone: "text-danger-text" },
+  info: { icon: "info", tone: "text-accent-text" },
 };
-const ICON: Record<Kind, string> = { success: "✅", error: "❌", info: "ℹ️" };
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -38,15 +38,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={notify}>
       {children}
-      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 px-4" aria-live="polite">
+      <div
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex flex-col items-center gap-2 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        aria-live="polite"
+      >
         {toasts.map((t) => (
           <button
+            type="button"
             key={t.id}
             onClick={() => dismiss(t.id)}
-            className={`pointer-events-auto max-w-lg rounded-xl border px-4 py-2 text-left text-sm shadow-lg ${STYLE[t.kind]}`}
+            className="pointer-events-auto flex max-w-md items-start gap-2.5 rounded-xl border border-line bg-surface px-4 py-3 text-left text-sm shadow-[var(--shadow-lg)] animate-pop-in motion-reduce:animate-none"
             title="Schließen"
           >
-            {ICON[t.kind]} {t.text}
+            <Icon name={STYLE[t.kind].icon} className={`mt-px size-[18px] ${STYLE[t.kind].tone}`} />
+            <span className="min-w-0">{t.text}</span>
           </button>
         ))}
       </div>

@@ -61,12 +61,12 @@ Diesen Abschnitt kannst du an die Familie weitergeben.
 1. **Öffnen:** Im Browser die Adresse des Servers aufrufen und das Familien-Passwort eingeben. Die Anmeldung bleibt 30 Tage gespeichert.
    *Tipp fürs Handy:* Im Browsermenü „Zum Startbildschirm hinzufügen“ wählen. Dann gibt es ein eigenes App-Symbol.
 2. **Hochladen:** In den gewünschten Ordner wechseln und auf **Dateien auswählen** oder **Ordner auswählen** tippen. Am PC kannst du Dateien einfach ins Fenster ziehen.
-3. **Ordnen:** Mit 📦 verschiebst du eine Datei in einen anderen Ordner, mit ✏️ benennst du sie um. Am PC geht es auch durch Ziehen auf einen Ordner oder auf die Pfadleiste oben. Für mehrere Dateien vorne die Häkchen setzen.
-4. **Ansehen:** Ein Tipp auf ein Foto, Video oder PDF öffnet die Vorschau. In der Galerie blätterst du mit ← → weiter. Die Ansicht **Kacheln** zeigt Vorschaubilder.
+3. **Ordnen:** Auf dem Handy und in der Kachelansicht öffnet **⋯** neben einer Datei das Menü mit **Herunterladen**, **Umbenennen**, **Verschieben** und **In den Papierkorb**. Am PC erscheinen dieselben Aktionen als Symbole rechts in der Zeile, sobald die Maus darauf zeigt. Dort kannst du Dateien auch auf einen Ordner oder auf die Pfadleiste oben ziehen. Für mehrere Dateien vorne die Häkchen setzen.
+4. **Ansehen:** Ein Tipp auf ein Foto, Video oder PDF öffnet die Vorschau. Mit **Zurück** und **Weiter** (am PC auch mit den Pfeiltasten) blätterst du durch den Ordner. Die Ansicht **Kacheln** zeigt Vorschaubilder.
 5. **Finden:** Unter **Dateisuche** einfach fragen, z. B. „Rechnungen März“ oder „Fotos vom Geburtstag“.
-6. **Löschen und zurückholen:** 🗑️ verschiebt in den **Papierkorb** (unten auf der Seite). Dort lässt sich alles 30 Tage lang mit ↩️ **Wiederherstellen** zurückholen.
+6. **Löschen und zurückholen:** Gelöschtes landet im **Papierkorb** (unten auf der Seite). Dort lässt sich alles 30 Tage lang mit **Wiederherstellen** zurückholen.
 
-Die Adresse in der Browserzeile zeigt den geöffneten Ordner (z. B. `…/#/Urlaub 2024`). Lesezeichen und die Zurück-Taste funktionieren deshalb wie gewohnt.
+Die Adresse in der Browserzeile zeigt den geöffneten Ordner (z. B. `…/#/Urlaub 2024`). Lesezeichen und die Zurück-Taste funktionieren deshalb wie gewohnt. Hell oder dunkel richtet sich die Oberfläche nach der Einstellung des Geräts.
 
 <br clear="right">
 
