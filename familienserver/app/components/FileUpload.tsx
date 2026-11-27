@@ -1,163 +1,118 @@
 "use client";
 
-import { useState, useRef, ChangeEvent } from "react";
-import axios from "axios";
+import { useRef, useState } from "react";
+import { entriesFromDataTransfer, entriesFromFileList, type Uploader } from "../lib/useUploader";
+import { formatSize, isExternalFileDrag } from "../lib/files";
 
 interface FileUploadProps {
-  apiBaseUrl: string;
-  onUploadSuccess: () => void;
-  devMode: boolean;
+  uploader: Uploader;
+  currentPath: string;
 }
 
-export default function FileUpload({ apiBaseUrl, onUploadSuccess, devMode }: FileUploadProps) {
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export default function FileUpload({ uploader, currentPath }: FileUploadProps) {
+  const fileInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const { state } = uploader;
+  const target = currentPath ? `„${currentPath.split("/").pop()}“` : "den Hauptordner";
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  const onPicked = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
     if (files && files.length > 0) {
-      setSelectedFiles(files);
-      setError(null);
-    } else {
-      setSelectedFiles(null);
+      uploader.upload(entriesFromFileList(files), currentPath);
     }
+    event.target.value = "";
   };
 
-  const getFileNameDisplay = () => {
-    if (!selectedFiles || selectedFiles.length === 0) {
-      return "Keine Dateien gewählt";
-    }
-    
-    if (selectedFiles.length === 1) {
-      return selectedFiles[0].name;
-    }
-    
-    return `${selectedFiles.length} Dateien ausgewählt`;
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFiles || selectedFiles.length === 0) {
-      setError("Bitte zuerst Dateien auswählen.");
-      return;
-    }
-
-    setUploading(true);
-    setUploadProgress(0);
-    setError(null);
-
-    try {
-      const uploadPromises = Array.from(selectedFiles).map(async (file, index) => {
-        const formData = new FormData();
-        formData.append("file", file, file.name);
-
-        if (devMode) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-          return { success: true, filename: file.name };
-        }
-
-        const response = await axios.post(`${apiBaseUrl}/api/upload`, formData, {
-          onUploadProgress: (progressEvent) => {
-            const progress = Math.round(
-              ((index + 1) / selectedFiles.length) * 100
-            );
-            setUploadProgress(progress);
-          },
-        });
-        return response.data;
-      });
-
-      await Promise.all(uploadPromises);
-      
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      setSelectedFiles(null);
-      setUploadProgress(100);
-      
-      onUploadSuccess();
-      
-      setTimeout(() => {
-        setUploading(false);
-        setUploadProgress(0);
-      }, 1000);
-      
-    } catch (err) {
-      console.error("Upload Fehler:", err);
-      setError("Fehler beim Hochladen der Dateien. Bitte versuchen Sie es erneut.");
-      setUploading(false);
-      setUploadProgress(0);
-    }
-  };
-
-  const handleSelectFiles = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
+  const percent = state && state.bytesTotal > 0 ? Math.round((state.bytesDone / state.bytesTotal) * 100) : 0;
 
   return (
     <div className="space-y-3">
-      {/* Haupt-Button zum Datei-Auswählen */}
-      <button
-        onClick={handleSelectFiles}
-        className="ios-button w-full"
+      <div
+        onDragOver={(e) => {
+          if (!isExternalFileDrag(e)) return;
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={async (e) => {
+          if (!isExternalFileDrag(e)) return;
+          e.preventDefault();
+          setDragOver(false);
+          uploader.upload(await entriesFromDataTransfer(e.dataTransfer), currentPath);
+        }}
+        className={`rounded-xl border-2 border-dashed p-4 text-center transition-colors ${
+          dragOver ? "border-blue-500 bg-blue-950/40" : "border-gray-700"
+        }`}
       >
-        📁 Dateien auswählen
-      </button>
-
-      {/* Versteckter File Input - wird durch Button ausgelöst */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        id="fileInput"
-        onChange={handleFileChange}
-        multiple
-        style={{ display: 'none' }}  // Versteckt, aber funktioniert mit Button
-      />
-
-      {/* Ausgewählte Dateien anzeigen */}
-      {selectedFiles && selectedFiles.length > 0 && (
-        <div className="bg-gray-800 rounded-lg p-3">
-          <p className="text-sm text-white">
-            <strong>Ausgewählt:</strong> {getFileNameDisplay()}
-          </p>
+        <p className="mb-3 text-sm text-gray-400">
+          Dateien oder Ordner hierher ziehen – sie landen in <span className="text-white">{target}</span>.
+        </p>
+        <div className="flex flex-wrap justify-center gap-2">
+          <button onClick={() => fileInput.current?.click()} className="ios-button" disabled={state?.running}>
+            📄 Dateien auswählen
+          </button>
+          <button onClick={() => folderInput.current?.click()} className="ios-button ios-button-secondary" disabled={state?.running}>
+            📁 Ordner auswählen
+          </button>
         </div>
-      )}
-
-      {/* Upload-Button - nur aktiv, wenn Dateien ausgewählt */}
-      <button
-        onClick={handleUpload}
-        className="ios-button w-full"
-        disabled={!selectedFiles || uploading}
-      >
-        {uploading ? (
-          <span>⬆️ Hochladen... {uploadProgress}%</span>
-        ) : (
-          <span>⬆️ Hochladen</span>
-        )}
-      </button>
-
-      {/* Fehler anzeigen */}
-      {error && (
-        <div className="bg-red-900/30 border border-red-700 rounded-lg p-2 text-red-400 text-sm">
-          ❌ {error}
-        </div>
-      )}
-      
-      {/* Fortschritt anzeigen */}
-      {uploading && uploadProgress > 0 && (
-        <div className="bg-green-900/30 border border-green-700 rounded-lg p-2 text-green-400 text-sm">
-          ✅ {uploadProgress < 100 ? `Lädt hoch: ${uploadProgress}%` : "Fertig! Aktualisiere die Seite..."}
-        </div>
-      )}
-
-      {/* Browser-Hinweis */}
-      <div className="text-xs text-gray-500 text-center pt-2">
-        Klicken Sie auf "Dateien auswählen" um Dateien von Ihrem Computer hochzuladen
+        <input ref={fileInput} type="file" multiple hidden onChange={onPicked} />
+        <input
+          ref={folderInput}
+          type="file"
+          hidden
+          onChange={onPicked}
+          // webkitdirectory erlaubt die Auswahl ganzer Ordner (alle aktuellen Browser)
+          {...{ webkitdirectory: "", directory: "" }}
+        />
       </div>
+
+      {state && (
+        <div className="rounded-xl bg-gray-800 p-3 text-sm">
+          <div className="mb-2 flex justify-between gap-2">
+            <span className="truncate">
+              {state.running ? `⬆️ ${state.current ?? "…"}` : state.failed.length ? "⚠️ Upload abgeschlossen mit Fehlern" : "✅ Upload abgeschlossen"}
+            </span>
+            <span className="shrink-0 text-gray-400">
+              {state.done}/{state.total} · {formatSize(state.bytesDone)} von {formatSize(state.bytesTotal)}
+            </span>
+          </div>
+          <div
+            className="h-2 overflow-hidden rounded-full bg-gray-700"
+            role="progressbar"
+            aria-valuenow={percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Upload-Fortschritt"
+          >
+            <div className="h-full bg-blue-500 transition-[width]" style={{ width: `${percent}%` }} />
+          </div>
+          {state.renamed.length > 0 && (
+            <details className="mt-2 text-gray-400">
+              <summary className="cursor-pointer">{state.renamed.length} Datei(en) umbenannt, weil der Name schon vergeben war</summary>
+              <ul className="mt-1 list-inside list-disc text-xs">
+                {state.renamed.map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+          {state.failed.length > 0 && (
+            <ul className="mt-2 space-y-1 text-xs text-red-400">
+              {state.failed.map((f) => (
+                <li key={f.name}>
+                  ❌ {f.name}: {f.error}
+                </li>
+              ))}
+            </ul>
+          )}
+          {!state.running && (
+            <button onClick={uploader.dismiss} className="mt-2 text-xs text-gray-400 hover:text-white">
+              Ausblenden
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

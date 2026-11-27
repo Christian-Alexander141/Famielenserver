@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+data/
+venv/
+.venv/
+**/__pycache__
+.pytest_cache
+tests/
+familienserver/node_modules
+familienserver/.next
+familienserver/out
+familienserver/public/uploads
+*.log

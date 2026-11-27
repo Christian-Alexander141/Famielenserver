@@ -6,16 +6,10 @@ Hier können Screenshots des laufenden Familienservers gespeichert werden.
 
 ### 1. Server starten
 ```bash
-cd /home/alex/Dokumente/Github/Famielenserver
-source venv/bin/activate
-python3 server.py
+./start.sh start
 ```
 
-### 2. Frontend starten (in neuem Terminal)
-```bash
-cd familienserver
-npm run dev
-```
+Dann im Browser `http://localhost:5000` öffnen und anmelden.
 
 ### 3. Screenshots erstellen
 

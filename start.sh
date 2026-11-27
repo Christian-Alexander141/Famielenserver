@@ -1,107 +1,203 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Familienserver – Startskript
+#
+#   ./start.sh            Menü anzeigen
+#   ./start.sh start      Server starten (Dauerbetrieb, z. B. auf dem Raspberry Pi)
+#   ./start.sh dev        Entwicklungsmodus mit automatischem Neuladen
+#   ./start.sh build      Nur das Frontend neu bauen
+#   ./start.sh password   Passwort ändern
+#   ./start.sh service    Als Systemdienst einrichten (startet automatisch beim Booten)
 
-# Familienserver Start Skript
-# Dies Skript startet sowohl das Backend (Flask) als auch das Frontend (Next.js)
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")"
+ROOT="$(pwd)"
+VENV="$ROOT/venv"
+PORT="${PORT:-5000}"
 
-# Speichere das aktuelle Arbeitsverzeichnis
-START_DIR=$(pwd)
+info() { echo "👉 $*"; }
+fail() { echo "❌ $*" >&2; exit 1; }
 
-# Ermittle das Verzeichnis, in dem dieses Skript liegt
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# ------------------------------------------------------------ Voraussetzungen
 
-echo "🗂️  Familienserver Start Skript"
-echo "=========================================="
-echo "Skript-Verzeichnis: $SCRIPT_DIR"
-echo "Aktuelles Verzeichnis: $START_DIR"
-echo ""
+check_python() {
+  command -v python3 >/dev/null || fail "Python 3 fehlt. Installieren mit: sudo apt install python3 python3-venv"
+  python3 -c 'import sys; sys.exit(sys.version_info < (3, 9))' || fail "Python 3.9 oder neuer wird benötigt."
+}
 
-# Überprüfe ob Python installiert ist
-if ! command -v python3 &> /dev/null; then
-    echo "❌ Fehler: Python 3 ist nicht installiert"
-    echo "   Bitte installieren Sie Python 3.8 oder neuer"
-    exit 1
-fi
+check_node() {
+  command -v npm >/dev/null || fail "Node.js/npm fehlt (wird nur zum Bauen des Frontends gebraucht). Siehe RASPBERRY_PI.md."
+}
 
-# Überprüfe ob Node.js installiert ist
-if ! command -v node &> /dev/null; then
-    echo "❌ Fehler: Node.js ist nicht installiert"
-    echo "   Bitte installieren Sie Node.js 18 oder neuer"
-    exit 1
-fi
+setup_venv() {
+  check_python
+  if [ ! -x "$VENV/bin/python" ]; then
+    info "Lege Python-Umgebung in ./venv an …"
+    python3 -m venv "$VENV" || fail "venv konnte nicht angelegt werden. Installieren mit: sudo apt install python3-venv"
+  fi
+  local stamp="$VENV/.requirements.sha"
+  local current
+  current="$(sha256sum requirements.txt | cut -d' ' -f1)"
+  if [ ! -f "$stamp" ] || [ "$(cat "$stamp")" != "$current" ]; then
+    info "Installiere Python-Pakete …"
+    "$VENV/bin/pip" install --quiet --upgrade pip
+    "$VENV/bin/pip" install --quiet -r requirements.txt
+    echo "$current" > "$stamp"
+  fi
+}
 
-# Überprüfe ob npm installiert ist
-if ! command -v npm &> /dev/null; then
-    echo "❌ Fehler: npm ist nicht installiert"
-    echo "   Bitte installieren Sie npm (kommt normalerweise mit Node.js)"
-    exit 1
-fi
+# ------------------------------------------------------------------ Passwort
 
-echo "✅ Voraussetzungen geprüft"
-echo ""
+has_password() {
+  [ -f .env ] && grep -Eq '^FAMILIENSERVER_PASSWORD=.+' .env
+}
 
-# Optionen anzeigen
-echo "Wählen Sie eine Option:"
-echo "1) Nur Backend starten (Flask Server)"
-echo "2) Nur Frontend starten (Next.js Dev Server)"
-echo "3) Beide starten (Backend + Frontend)"
-echo "4) Beenden"
-echo ""
+ask_password() {
+  local pw1 pw2
+  while true; do
+    read -rsp "Neues Familien-Passwort (mind. 8 Zeichen): " pw1; echo
+    read -rsp "Passwort wiederholen: " pw2; echo
+    if [ "${#pw1}" -lt 8 ]; then echo "Zu kurz – bitte mindestens 8 Zeichen."; continue; fi
+    if [ "$pw1" != "$pw2" ]; then echo "Die Eingaben stimmen nicht überein."; continue; fi
+    if [[ "$pw1" == *$'\n'* || "$pw1" == *"'"* ]]; then echo "Bitte keine Zeilenumbrüche oder Apostrophe verwenden."; continue; fi
+    break
+  done
+  umask 077
+  touch .env
+  # alte Zeile entfernen, neue anhängen (in Apostrophen, damit Sonderzeichen erhalten bleiben)
+  local tmp
+  tmp="$(mktemp)"
+  grep -v '^FAMILIENSERVER_PASSWORD=' .env > "$tmp" || true
+  printf "FAMILIENSERVER_PASSWORD='%s'\n" "$pw1" >> "$tmp"
+  mv "$tmp" .env
+  chmod 600 .env
+  info "Passwort gespeichert in .env (nur für dich lesbar). Bestehende Anmeldungen sind jetzt ungültig."
+}
 
-read -p "Option (1-4): " option
+ensure_password() {
+  if ! has_password; then
+    echo "🔒 Für den Familienserver wird ein gemeinsames Passwort benötigt."
+    ask_password
+  fi
+}
 
-echo ""
+# ------------------------------------------------------------------- Frontend
 
-case $option in
-    1)
-        echo "🚀 Starte Backend Server (Port 5000)..."
-        echo "   Drücken Sie STRG+C zum Beenden"
-        echo ""
-        cd "$SCRIPT_DIR"
-        python3 server.py
-        ;;
-    2)
-        echo "🚀 Starte Frontend Server (Port 3000)..."
-        echo "   Drücken Sie STRG+C zum Beenden"
-        echo ""
-        cd "$SCRIPT_DIR/familienserver"
-        npm run dev
-        ;;
-    3)
-        echo "🚀 Starte Backend und Frontend..."
-        echo ""
-        echo "Backend läuft auf: http://localhost:5000"
-        echo "Frontend läuft auf: http://localhost:3000"
-        echo ""
-        echo "Drücken Sie STRG+C zum Beenden beider Server"
-        echo ""
-        
-        # Backend in Hintergrund starten
-        cd "$SCRIPT_DIR"
-        python3 server.py > backend.log 2>&1 &
-        BACKEND_PID=$!
-        echo "Backend gestartet (PID: $BACKEND_PID)"
-        
-        # Warten bis Backend gestartet ist
-        sleep 3
-        
-        # Frontend starten
-        cd "$SCRIPT_DIR/familienserver"
-        npm run dev > frontend.log 2>&1 &
-        FRONTEND_PID=$!
-        echo "Frontend gestartet (PID: $FRONTEND_PID)"
-        
-        # Auf beide Prozesse warten
-        wait $BACKEND_PID $FRONTEND_PID
-        
-        # Prozesse beenden wenn Skript beendet wird
-        kill $BACKEND_PID $FRONTEND_PID 2>/dev/null
-        ;;
-    4)
-        echo "👋 Auf Wiedersehen!"
-        exit 0
-        ;;
-    *)
-        echo "❌ Ungültige Option"
-        exit 1
-        ;;
+frontend_outdated() {
+  local index="familienserver/out/index.html"
+  [ ! -f "$index" ] && return 0
+  [ -n "$(find familienserver/app familienserver/package.json familienserver/next.config.ts -newer "$index" -print -quit)" ]
+}
+
+build_frontend() {
+  check_node
+  info "Baue das Frontend (das kann auf dem Raspberry Pi einige Minuten dauern) …"
+  (cd familienserver && npm ci --no-audit --no-fund && npm run build)
+}
+
+ensure_frontend() {
+  frontend_outdated || return 0
+  if ! command -v npm >/dev/null && [ -f familienserver/out/index.html ]; then
+    # z. B. Raspberry Pi ohne Node.js, Frontend wurde am PC gebaut und kopiert
+    info "npm nicht gefunden – verwende das vorhandene Frontend in familienserver/out."
+    return 0
+  fi
+  build_frontend
+}
+
+# ------------------------------------------------------------------- Aktionen
+
+lan_address() {
+  hostname -I 2>/dev/null | awk '{print $1}'
+}
+
+start_server() {
+  setup_venv
+  ensure_password
+  ensure_frontend
+  local ip
+  ip="$(lan_address)"
+  echo
+  echo "✅ Familienserver läuft:"
+  echo "   Auf diesem Gerät:  http://localhost:$PORT"
+  [ -n "$ip" ] && echo "   Im Heimnetz:       http://$ip:$PORT"
+  echo "   Beenden mit STRG+C"
+  echo
+  exec "$VENV/bin/gunicorn" --workers 1 --threads 8 --bind "0.0.0.0:$PORT" "backend:create_app()"
+}
+
+start_dev() {
+  setup_venv
+  ensure_password
+  check_node
+  [ -d familienserver/node_modules ] || (cd familienserver && npm ci --no-audit --no-fund)
+
+  "$VENV/bin/python" server.py --debug --port "$PORT" &
+  local backend_pid=$!
+  # Beim Beenden (STRG+C) auch das Backend stoppen
+  trap 'kill "$backend_pid" 2>/dev/null || true' EXIT INT TERM
+
+  echo
+  echo "🧪 Entwicklungsmodus: http://localhost:3000  (Backend auf 127.0.0.1:$PORT)"
+  echo "   Änderungen am Code werden automatisch neu geladen. Beenden mit STRG+C."
+  echo
+  (cd familienserver && FAMILIENSERVER_BACKEND_URL="http://127.0.0.1:$PORT" npm run dev)
+}
+
+install_service() {
+  setup_venv
+  ensure_password
+  ensure_frontend
+  command -v systemctl >/dev/null || fail "systemd wurde nicht gefunden."
+  local unit=/etc/systemd/system/familienserver.service
+  info "Richte den Dienst $unit ein (dafür wird sudo benötigt) …"
+  sudo tee "$unit" >/dev/null <<EOF
+[Unit]
+Description=Familienserver
+After=network-online.target local-fs.target
+Wants=network-online.target
+
+[Service]
+User=$(id -un)
+WorkingDirectory=$ROOT
+ExecStart=$VENV/bin/gunicorn --workers 1 --threads 8 --bind 0.0.0.0:$PORT "backend:create_app()"
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now familienserver
+  info "Fertig. Status: sudo systemctl status familienserver · Logs: journalctl -u familienserver -f"
+}
+
+menu() {
+  echo "🗂️  Familienserver"
+  echo "=================="
+  echo "1) Starten (empfohlen)"
+  echo "2) Entwicklungsmodus (automatisches Neuladen)"
+  echo "3) Frontend neu bauen"
+  echo "4) Passwort ändern"
+  echo "5) Als Systemdienst einrichten (Autostart)"
+  echo "6) Beenden"
+  echo
+  read -rp "Option (1-6): " choice
+  case "$choice" in
+    1) start_server ;;
+    2) start_dev ;;
+    3) build_frontend ;;
+    4) ask_password ;;
+    5) install_service ;;
+    *) echo "👋 Auf Wiedersehen!" ;;
+  esac
+}
+
+case "${1:-}" in
+  start) start_server ;;
+  dev) start_dev ;;
+  build) build_frontend ;;
+  password) ask_password ;;
+  service) install_service ;;
+  "") menu ;;
+  *) fail "Unbekannte Option: $1 (erlaubt: start, dev, build, password, service)" ;;
 esac
