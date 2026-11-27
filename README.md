@@ -1,70 +1,95 @@
 # 🗂️ Familienserver
 
-Ein Server für das Heimnetzwerk, auf dem die ganze Familie Dateien hochlädt, sortiert und wiederfindet. Er läuft auf einem Raspberry Pi (ab 3B), einem alten Laptop oder per Docker. Er ist passwortgeschützt, funktioniert auf PC, Handy und Tablet und kommt ohne Cloud aus.
+**Die gemeinsame Ablage für die ganze Familie – im eigenen Heimnetz statt in der Cloud.**
+
+Fotos, Rechnungen, Zeugnisse und Rezepte an einem Ort: hochladen, ordnen, wiederfinden. Der Familienserver läuft auf einem Raspberry Pi (ab 3B), einem alten Laptop oder per Docker. Bedient wird er im Browser, am PC genauso wie auf Handy oder Tablet.
+
+<p align="center">
+  <img src="docs/images/dateien.png" alt="Dateiliste mit Ordnern und Dateien" width="49%">
+  <img src="docs/images/galerie.png" alt="Kachelansicht mit Vorschaubildern" width="49%">
+</p>
+
+**Inhalt:** [Funktionen](#-funktionen) · [Schnellstart](#-schnellstart) · [Bedienung](#-bedienung) · [Betrieb](#-betrieb) · [Umstieg von Version 1](#-umstieg-von-version-1) · [Entwicklung](#-entwicklung) · [Hilfe](#-hilfe)
 
 ---
 
-## 🚀 Funktionen
+## ✨ Funktionen
 
-**Dateien und Ordner**
-- Hochladen von einzelnen Dateien oder ganzen Ordnern, per Knopf oder per Drag & Drop vom Desktop
-- Uploads landen im gerade geöffneten Ordner. Gleichnamige Dateien werden nie überschrieben, sondern als „foto (1).jpg“ gespeichert
-- Ordner anlegen, umbenennen, verschieben (Zielordner per Klick oder per Drag & Drop auf Ordner und Pfadleiste)
-- Mehrfachauswahl: mehrere Dateien gleichzeitig verschieben, löschen oder als ZIP herunterladen
-- Liste oder Kacheln mit Vorschaubildern, sortierbar nach Name, Datum oder Größe, mit Filter
-- Vorschau direkt im Browser: Fotos (Galerie mit ← →), Videos, Musik, PDFs, Textdateien
-- Ordner als ZIP herunterladen. Das Archiv wird beim Herunterladen erzeugt, deshalb gehen auch große Ordner auf dem Pi
-- Papierkorb: Gelöschtes kann 30 Tage lang wiederhergestellt werden (einstellbar)
-- Die Adresse zeigt den Ordner an (`…/#/Bilder/Urlaub`), dadurch funktionieren Zurück-Taste und Lesezeichen
-
-**Suche („Chatbot“)**
-- Sucht in allen Ordnern, regelbasiert und komplett lokal
-- Versteht Füllwörter und Dateiarten: „Zeige mir alle PDFs von 2024“, „Bilder vom Urlaub“, „Suche nach Rechnung“
-
-**System**
-- Anzeige von CPU, Arbeitsspeicher, freiem Speicherplatz und CPU-Temperatur (Raspberry Pi)
-
-**Sicherheit**
-- Gemeinsames Familien-Passwort, die Anmeldung bleibt 30 Tage gespeichert
-- Schutz vor Pfad-Tricks (`../`), vor fremden Webseiten (CSRF) und vor Passwort-Raten
-- Hochgeladene HTML- und SVG-Dateien werden nie im Browser ausgeführt
-- Die Daten liegen außerhalb des Programmordners und gelangen nie ins Git-Repository
+| | |
+|---|---|
+| 📤 **Hochladen** | Dateien oder ganze Ordner, per Knopf oder Drag & Drop. Nichts wird überschrieben, ein zweites „foto.jpg“ heißt automatisch „foto (1).jpg“ |
+| 📁 **Ordnen** | Ordner anlegen, umbenennen, verschieben (per Klick oder durch Ziehen), mehrere Dateien auf einmal bearbeiten |
+| 🖼️ **Ansehen** | Liste oder Kacheln mit Vorschaubildern. Fotos als Galerie, dazu Videos, Musik, PDFs und Texte direkt im Browser |
+| 🔍 **Finden** | Suche in allen Ordnern mit normalen Sätzen: „Zeige mir alle PDFs von 2024“, „Bilder vom Urlaub“ |
+| 🗑️ **Papierkorb** | Gelöschtes lässt sich 30 Tage lang wiederherstellen |
+| ⬇️ **Herunterladen** | Einzelne Dateien, ganze Ordner oder eine Auswahl als ZIP, auch sehr große Ordner |
+| 🔒 **Geschützt** | Gemeinsames Familien-Passwort, alles bleibt im Heimnetz |
+| 💾 **Gesichert** | Skript für automatische Sicherungen auf eine zweite Festplatte |
+| 📊 **Überblick** | Auslastung, freier Speicherplatz und CPU-Temperatur des Servers |
 
 ---
 
 ## ⚡ Schnellstart
 
-Voraussetzungen: **Python 3.9+** und **Node.js 20+**. Node wird nur zum einmaligen Bauen des Frontends gebraucht, siehe [RASPBERRY_PI.md](RASPBERRY_PI.md).
+**Du brauchst:** Linux (z. B. Raspberry Pi OS), **Python 3.9+** und **Node.js 20+**. Node wird nur zum einmaligen Bauen der Oberfläche gebraucht. Auf dem Raspberry Pi geht es auch ohne, siehe [RASPBERRY_PI.md](RASPBERRY_PI.md).
 
 ```bash
 git clone https://github.com/Christian-Alexander141/Famielenserver.git
 cd Famielenserver
-./start.sh
+./start.sh start
 ```
 
-Beim ersten Start fragt das Skript nach dem Familien-Passwort. Danach richtet es die Python-Umgebung ein, baut das Frontend und startet den Server. Anschließend ist er erreichbar unter:
+Beim ersten Start fragt das Skript nach einem **Familien-Passwort** (mindestens 8 Zeichen). Danach richtet es alles Nötige ein und zeigt die Adresse an, unter der der Server im Heimnetz erreichbar ist, z. B. `http://192.168.178.50:5000`.
 
-- auf dem Server selbst: <http://localhost:5000>
-- im Heimnetz: `http://<IP-des-Servers>:5000` (das Skript zeigt die Adresse an)
+Damit der Server nach jedem Neustart automatisch läuft:
 
-Weitere Befehle:
+```bash
+./start.sh service
+```
 
-| Befehl | Wirkung |
-|---|---|
-| `./start.sh start` | Server starten (ohne Menü) |
-| `./start.sh service` | Als Systemdienst einrichten, startet dann automatisch beim Booten |
-| `./start.sh password` | Familien-Passwort ändern (alle Geräte müssen sich neu anmelden) |
-| `./start.sh build` | Frontend neu bauen |
-| `./start.sh dev` | Entwicklungsmodus mit automatischem Neuladen (<http://localhost:3000>) |
-| `./backup.sh <Ziel>` | Datensicherung, siehe unten |
-
-Alternativ mit Docker: [DOCKER.md](DOCKER.md).
+> 🍓 Ausführliche Anleitung für den Raspberry Pi (feste IP, USB-Festplatte, Firewall): **[RASPBERRY_PI.md](RASPBERRY_PI.md)**
+> 🐳 Mit Docker: **[DOCKER.md](DOCKER.md)** · 🔧 Schritt für Schritt ohne Skript: **[ohne_docker.md](ohne_docker.md)**
 
 ---
 
-## 🔧 Einstellungen
+## 👪 Bedienung
 
-Alle Einstellungen stehen in der Datei `.env` im Projektordner (Vorlage: [.env.example](.env.example)).
+Diesen Abschnitt kannst du an die Familie weitergeben.
+
+<img src="docs/images/handy.png" alt="Familienserver auf dem Handy" width="230" align="right">
+
+1. **Öffnen:** Im Browser die Adresse des Servers aufrufen und das Familien-Passwort eingeben. Die Anmeldung bleibt 30 Tage gespeichert.
+   *Tipp fürs Handy:* Im Browsermenü „Zum Startbildschirm hinzufügen“ wählen. Dann gibt es ein eigenes App-Symbol.
+2. **Hochladen:** In den gewünschten Ordner wechseln und auf **Dateien auswählen** oder **Ordner auswählen** tippen. Am PC kannst du Dateien einfach ins Fenster ziehen.
+3. **Ordnen:** Mit 📦 verschiebst du eine Datei in einen anderen Ordner, mit ✏️ benennst du sie um. Am PC geht es auch durch Ziehen auf einen Ordner oder auf die Pfadleiste oben. Für mehrere Dateien vorne die Häkchen setzen.
+4. **Ansehen:** Ein Tipp auf ein Foto, Video oder PDF öffnet die Vorschau. In der Galerie blätterst du mit ← → weiter. Die Ansicht **Kacheln** zeigt Vorschaubilder.
+5. **Finden:** Unter **Dateisuche** einfach fragen, z. B. „Rechnungen März“ oder „Fotos vom Geburtstag“.
+6. **Löschen und zurückholen:** 🗑️ verschiebt in den **Papierkorb** (unten auf der Seite). Dort lässt sich alles 30 Tage lang mit ↩️ **Wiederherstellen** zurückholen.
+
+Die Adresse in der Browserzeile zeigt den geöffneten Ordner (z. B. `…/#/Urlaub 2024`). Lesezeichen und die Zurück-Taste funktionieren deshalb wie gewohnt.
+
+<br clear="right">
+
+---
+
+## 🧰 Betrieb
+
+### Befehle
+
+| Befehl | Wirkung |
+|---|---|
+| `./start.sh` | Menü mit allen Optionen |
+| `./start.sh start` | Server starten |
+| `./start.sh service` | Als Systemdienst einrichten (Autostart beim Booten) |
+| `./start.sh password` | Familien-Passwort ändern. Alle Geräte müssen sich danach neu anmelden |
+| `./start.sh build` | Oberfläche neu bauen (nach Updates) |
+| `./backup.sh <Ziel>` | Datensicherung, siehe unten |
+
+Beim Systemdienst: `sudo systemctl status familienserver` zeigt den Zustand, `sudo systemctl restart familienserver` startet ihn neu.
+
+### Einstellungen
+
+Alle Einstellungen stehen in der Datei `.env` im Projektordner. Eine kommentierte Vorlage ist [.env.example](.env.example). Nach Änderungen den Server neu starten.
 
 | Variable | Standard | Bedeutung |
 |---|---|---|
@@ -72,93 +97,105 @@ Alle Einstellungen stehen in der Datei `.env` im Projektordner (Vorlage: [.env.e
 | `FAMILIENSERVER_DATA_DIR` | `./data` | Wo die Dateien liegen, z. B. auf einer USB-Festplatte |
 | `FAMILIENSERVER_TRASH_DAYS` | `30` | Tage im Papierkorb (`0` = bis zum manuellen Leeren) |
 | `FAMILIENSERVER_MAX_UPLOAD_MB` | `4096` | Maximale Größe pro Datei |
+| `FAMILIENSERVER_LOG_DIR` | `./logs` | Ordner für Protokolle |
 | `FAMILIENSERVER_SECURE_COOKIES` | `0` | `1`, wenn der Server per HTTPS erreichbar ist |
 | `FAMILIENSERVER_TRUST_PROXY` | `0` | Anzahl vorgeschalteter Reverse Proxys (nginx, Caddy) |
-| `FAMILIENSERVER_LOG_DIR` | `./logs` | Ordner für Protokolle |
-| `PORT` (nur `start.sh`) | `5000` | Port des Servers |
+| `PORT` | `5000` | Port des Servers (nur für `start.sh`) |
 
-Nach einer Änderung den Server neu starten (`sudo systemctl restart familienserver` beim Systemdienst).
+### Daten und Datensicherung
+
+Alle Familiendateien liegen im Datenordner (Standard `./data`). Der versteckte Unterordner `.familienserver/` enthält Papierkorb und Vorschaubilder. Der Datenordner ist **das Einzige, was gesichert werden muss**.
+
+Der Papierkorb schützt vor versehentlichem Löschen, aber nicht vor einer kaputten Festplatte. Dafür gibt es `backup.sh`. Es legt bei jedem Lauf eine datierte Kopie auf einem **anderen** Datenträger an und behält die letzten 14. Unveränderte Dateien werden nicht doppelt gespeichert, deshalb braucht jede weitere Sicherung nur Platz für das, was sich geändert hat.
+
+```bash
+./backup.sh /media/usb/familienserver-backup
+
+# täglich um 3 Uhr automatisch (crontab -e):
+0 3 * * * /home/pi/Famielenserver/backup.sh /media/usb/familienserver-backup
+```
+
+**Wiederherstellen:** Jede Sicherung ist ein normaler Ordner. Einfach die gewünschten Dateien aus z. B. `/media/usb/familienserver-backup/2026-11-27_0300/` zurückkopieren.
 
 ### Protokolle
 
-Alle Protokolle landen im Ordner `logs/`. Er ist in `.gitignore` eingetragen und kommt nie ins Repository:
+Alle Protokolle landen im Ordner `logs/`. Er steht in der `.gitignore` und kommt nie ins Repository.
 
 | Datei | Inhalt |
 |---|---|
-| `familienserver.log` | Meldungen des Servers (Fehler, fehlgeschlagene Anmeldungen, …). Rotiert automatisch bei 1 MB, die letzten 5 Dateien bleiben erhalten |
-| `gunicorn.log` | Start, Stopp und Abstürze des Servers (`./start.sh start` und Systemdienst) |
+| `familienserver.log` | Meldungen des Servers, z. B. Fehler und fehlgeschlagene Anmeldungen. Ab 1 MB beginnt eine neue Datei, die letzten 5 bleiben erhalten |
+| `gunicorn.log` | Start, Stopp und Abstürze des Servers |
 | `backup.log` | Jeder Lauf von `backup.sh` |
-| `frontend-dev.log` | Ausgabe des Next.js-Dev-Servers (nur `./start.sh dev`) |
+| `frontend-dev.log` | Ausgabe des Next.js-Entwicklungsservers (nur `./start.sh dev`) |
 
----
+### Sicherheit
 
-## 💾 Daten und Datensicherung
+- **Familien-Passwort:** Nach 10 Fehlversuchen wird die Anmeldung für 15 Minuten gesperrt.
+- **Eingaben werden geprüft:** Pfad-Tricks wie `../` werden blockiert, fremde Webseiten können keine Aktionen auslösen (CSRF-Schutz), und hochgeladene HTML- oder SVG-Dateien werden nie im Browser ausgeführt.
+- **Daten getrennt vom Programm:** Die Familiendateien liegen außerhalb des Programmordners und gelangen nie ins Git-Repository.
+- ⚠️ **Nicht per Portfreigabe ins Internet stellen.** Für den Zugriff von unterwegs ein VPN nutzen, z. B. WireGuard (in vielen Routern eingebaut) oder Tailscale.
 
-Alle Familiendateien liegen im Datenordner (Standard `./data`). Der versteckte Unterordner `.familienserver/` enthält Papierkorb, Vorschaubilder und den Sitzungsschlüssel.
-
-Der Papierkorb ist **keine** Datensicherung. Für eine echte Sicherung gibt es `backup.sh`. Es legt datierte Kopien auf einem anderen Datenträger an, und unveränderte Dateien belegen dank Hardlinks keinen zusätzlichen Platz:
+### Updates
 
 ```bash
-./backup.sh /media/usb/familienserver-backup        # behält die letzten 14 Sicherungen
-crontab -e                                           # täglich um 3 Uhr (Protokoll: logs/backup.log):
-# 0 3 * * * /home/pi/Famielenserver/backup.sh /media/usb/familienserver-backup
+git pull
+./start.sh build
+sudo systemctl restart familienserver
 ```
 
 ---
 
 ## 🔄 Umstieg von Version 1
 
-- **Ein Port statt zwei:** Frontend und API laufen jetzt gemeinsam auf **Port 5000**. Port 3000 wird nur noch im Entwicklungsmodus genutzt. Lesezeichen und Firewall-Regeln bitte anpassen.
-- **Passwort:** neu und Pflicht. `./start.sh` fragt beim ersten Start danach.
-- **Datenordner:** Dateien aus `familienserver/public/uploads` werden beim ersten Start automatisch nach `data/` verschoben.
-- **`NEXT_PUBLIC_API_BASE_URL`** wird nicht mehr gebraucht. Das Frontend spricht die API immer unter derselben Adresse an.
-- **Löschen** verschiebt in den Papierkorb, statt sofort endgültig zu löschen.
-- **Systemdienste:** Die beiden alten Dienste (Backend und Frontend) durch einen ersetzen, siehe [RASPBERRY_PI.md](RASPBERRY_PI.md#autostart).
+| Was | Vorher | Jetzt |
+|---|---|---|
+| Adresse | `http://<IP>:3000` | `http://<IP>:5000`. Lesezeichen und Firewall-Regeln anpassen |
+| Anmeldung | keine | Familien-Passwort, `./start.sh` fragt beim ersten Start danach |
+| Dateien | `familienserver/public/uploads` | `data/`, wird beim ersten Start automatisch umgezogen |
+| Löschen | sofort endgültig | erst in den Papierkorb |
+| Dienste | Backend- und Frontend-Dienst | ein Dienst, siehe [RASPBERRY_PI.md](RASPBERRY_PI.md#autostart) |
+| Python-Pakete | `requirements.txt` | `pyproject.toml` (installiert `start.sh` automatisch) |
+| `NEXT_PUBLIC_API_BASE_URL` | nötig | entfällt |
 
 ---
 
-## 📦 Projektstruktur
+## 💻 Entwicklung
+
+```bash
+./start.sh dev                          # Backend + Oberfläche mit automatischem Neuladen → http://localhost:3000
+venv/bin/pip install -e ".[dev]"        # Abhängigkeiten inkl. pytest (aus pyproject.toml)
+venv/bin/python -m pytest               # Backend-Tests
+cd familienserver && npm run lint       # Oberfläche prüfen
+```
+
+Bei jedem Push prüft die [CI](.github/workflows/ci.yml) Tests, Typen, Lint und Build.
+
+**Aufbau:** Die Oberfläche (Next.js) wird als statische Seite nach `familienserver/out` gebaut. Im Betrieb liefert das Flask-Backend sie zusammen mit der API aus. Das ist ein Prozess auf einem Port, und auf dem Pi läuft kein Node.js mit. Im Entwicklungsmodus leitet Next.js `/api/*` an das Backend auf `127.0.0.1:5000` weiter.
 
 ```
 Famielenserver/
-├── backend/                 Flask-Backend
-│   ├── __init__.py          App, Fehlerbehandlung, Auslieferung des Frontends
-│   ├── api.py               REST-API unter /api
-│   ├── auth.py              Anmeldung, CSRF-Schutz, Sperre bei Fehlversuchen
-│   ├── storage.py           Dateizugriff, Pfadprüfung, Papierkorb
-│   ├── search.py            Dateisuche für den Chatbot
-│   ├── system.py            CPU/RAM/Speicher/Temperatur
-│   ├── thumbnails.py        Vorschaubilder (Pillow)
-│   └── zipstream.py         ZIP-Download ohne Zwischenspeicher
-├── familienserver/          Next.js-Frontend (wird statisch nach out/ gebaut)
-│   └── app/
-│       ├── page.tsx         Hauptseite
-│       ├── components/      Dateibrowser, Upload, Suche, Papierkorb, …
-│       └── lib/             API-Zugriff, Dateitypen, Upload-Logik
-├── tests/                   Backend-Tests (pytest)
-├── pyproject.toml           Python-Abhängigkeiten und Projektdaten
-├── server.py                Startpunkt für Entwicklung
-├── start.sh                 Einrichten und Starten
-├── backup.sh                Datensicherung
+├── backend/            Flask-Backend
+│   ├── __init__.py       App, Fehlerbehandlung, Protokolle, Auslieferung der Oberfläche
+│   ├── api.py            REST-API unter /api
+│   ├── auth.py           Anmeldung, CSRF-Schutz, Sperre bei Fehlversuchen
+│   ├── storage.py        Dateizugriff, Pfadprüfung, Papierkorb
+│   ├── search.py         Dateisuche
+│   ├── system.py         CPU/RAM/Speicher/Temperatur
+│   ├── thumbnails.py     Vorschaubilder (Pillow)
+│   └── zipstream.py      ZIP-Download ohne Zwischenspeicher
+├── familienserver/     Next.js-Oberfläche (app/page.tsx, app/components/, app/lib/)
+├── tests/              Backend-Tests (pytest)
+├── docs/images/        Screenshots
+├── pyproject.toml      Python-Abhängigkeiten
+├── start.sh            Einrichten und Starten
+├── backup.sh           Datensicherung
 ├── Dockerfile, docker-compose.yml
-├── data/                    Familiendateien (nicht im Git-Repository)
-└── logs/                    Protokolle (nicht im Git-Repository)
+├── data/               Familiendateien    ┐
+└── logs/               Protokolle         ┘ nicht im Repository
 ```
 
----
-
-## 🧑‍💻 Entwicklung
-
-```bash
-./start.sh dev                              # Backend + Next.js-Dev-Server mit Hot-Reload
-venv/bin/pip install -e ".[dev]"            # Abhängigkeiten aus pyproject.toml inkl. pytest
-venv/bin/python -m pytest                   # Backend-Tests
-cd familienserver && npm run lint           # Frontend prüfen
-```
-
-Im Entwicklungsmodus leitet Next.js `/api/*` an das Backend auf `127.0.0.1:5000` weiter. Im Betrieb liefert Flask die gebauten Dateien aus `familienserver/out` direkt aus. Das bedeutet einen Prozess und einen Port, und auf dem Pi läuft kein Node.js mit.
-
-### API-Überblick
+<details>
+<summary><strong>API-Überblick</strong></summary>
 
 Alle Endpunkte außer `/api/health`, `/api/session` und `/api/login` erfordern eine Anmeldung. Ändernde Anfragen (POST) brauchen den Header `X-Familienserver: 1`.
 
@@ -173,9 +210,27 @@ Alle Endpunkte außer `/api/health`, `/api/session` und `/api/login` erfordern e
 | POST | `/api/rename` `{path, name}` | Umbenennen |
 | POST | `/api/move` `{path, destination}` | Verschieben (`destination` = Zielordner) |
 | POST | `/api/delete` `{path}` | In den Papierkorb |
-| GET/POST | `/api/trash`, `/api/trash/restore`, `/api/trash/delete`, `/api/trash/empty` | Papierkorb |
+| GET | `/api/trash` | Inhalt des Papierkorbs |
+| POST | `/api/trash/restore`, `/api/trash/delete` `{id}`, `/api/trash/empty` | Wiederherstellen, endgültig löschen, leeren |
 | POST | `/api/search` `{query}` | Suche |
 | GET | `/api/system` | Systemauslastung |
+
+</details>
+
+---
+
+## 🆘 Hilfe
+
+| Problem | Lösung |
+|---|---|
+| Seite lädt nicht von anderen Geräten | Läuft der Server (`sudo systemctl status familienserver`)? Richtige IP und Port 5000? Firewall? |
+| „Kein Passwort gesetzt“ | `./start.sh password` |
+| „Das Frontend ist noch nicht gebaut“ | `./start.sh build` |
+| Passwort vergessen | `./start.sh password` setzt ein neues |
+| Upload bricht bei großen Dateien ab | `FAMILIENSERVER_MAX_UPLOAD_MB` erhöhen, freien Speicherplatz prüfen |
+| Was ist schiefgelaufen? | `logs/familienserver.log` und `logs/gunicorn.log` ansehen |
+
+Weitere Lösungen stehen in [RASPBERRY_PI.md](RASPBERRY_PI.md#-häufige-probleme) und [ohne_docker.md](ohne_docker.md#häufige-probleme).
 
 ---
 

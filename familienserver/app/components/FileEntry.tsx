@@ -38,10 +38,10 @@ function Thumbnail({ item, enabled, className }: { item: FileItem; enabled: bool
   );
 }
 
-function Actions({ item, ...h }: { item: FileItem } & EntryHandlers) {
+function Actions({ item, className = "", ...h }: { item: FileItem; className?: string } & EntryHandlers) {
   const isDir = item.type === "directory";
   return (
-    <div className="flex shrink-0 items-center">
+    <div className={`flex shrink-0 items-center ${className}`}>
       <button onClick={() => h.onDownload(item)} className="icon-button" title={isDir ? "Als ZIP herunterladen" : "Herunterladen"}>
         ⬇️
       </button>
@@ -109,10 +109,10 @@ export default function FileEntry({ item, view, selected, dragging, dropTarget, 
   return (
     <li
       {...dragProps}
-      className={`flex items-center gap-3 rounded-xl px-2 py-1.5 transition-colors ${highlight} ${dragging ? "opacity-40" : ""}`}
+      className={`flex flex-wrap items-center gap-x-3 rounded-xl px-2 py-1.5 transition-colors sm:flex-nowrap ${highlight} ${dragging ? "opacity-40" : ""}`}
     >
       {checkbox}
-      <button onClick={() => handlers.onOpen(item)} className="flex min-w-0 flex-1 items-center gap-3 py-1 text-left">
+      <button onClick={() => handlers.onOpen(item)} className="flex min-w-0 flex-1 basis-[calc(100%-2rem)] items-center gap-3 py-1 text-left sm:basis-auto">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg text-2xl">
           <Thumbnail item={item} enabled={thumbnails} className="h-10 w-10 rounded-lg object-cover" />
         </span>
@@ -121,7 +121,8 @@ export default function FileEntry({ item, view, selected, dragging, dropTarget, 
           <span className="block truncate text-xs text-gray-500">{dropTarget ? "Hier ablegen" : meta}</span>
         </span>
       </button>
-      <Actions item={item} {...handlers} />
+      {/* Auf dem Handy in eigener Zeile unter dem Namen, damit der Name lesbar bleibt */}
+      <Actions item={item} className="ml-auto sm:ml-0" {...handlers} />
     </li>
   );
 }
